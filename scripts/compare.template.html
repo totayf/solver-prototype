@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCR Karşılaştırma</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --surface: #ffffff; --text: #1c1c1a; --muted: #6b6b66; --border: #e3e3de;
+    --google: #d97706; --google-fill: rgba(245, 158, 11, .12); --mistral: #2563eb; --mistral-fill: rgba(37, 99, 235, .08);
+    --select: #16a34a; --hl: #facc15; --ink: #dc2626; --circle: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, sans-serif; }
+  header { padding: 20px 16px 8px; max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .legend > div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .legend b.g { color: var(--google); } .legend b.m { color: var(--mistral); }
+  .legend code { background: #f0f0ec; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  nav { display: flex; gap: 6px; padding: 12px 16px; max-width: 1400px; margin: 0 auto; flex-wrap: wrap; }
+  nav button { border: 1px solid var(--border); background: var(--surface); padding: 6px 14px; border-radius: 999px; cursor: pointer; font: inherit; }
+  nav button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 16px 40px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-width: 0; }
+  .panel h2 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .panel h2 .dot { width: 10px; height: 10px; border-radius: 3px; }
+  .stats { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .toolbar button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: #fafaf8; cursor: pointer; }
+  .toolbar button:hover { background: #f0f0ec; }
+  .hint { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .stage { position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .stage img { display: block; width: 100%; height: auto; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .box { cursor: pointer; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  .box.google { fill: var(--google-fill); stroke: var(--google); }
+  .box.mistral { fill: var(--mistral-fill); stroke: var(--mistral); stroke-width: 2; stroke-dasharray: 6 3; }
+  .box:hover { fill: rgba(22, 163, 74, .18); }
+  .box.selected { fill: rgba(22, 163, 74, .25); stroke: var(--select); stroke-width: 2.5; stroke-dasharray: none; }
+  .hide-boxes .box:not(.selected) { fill: transparent; stroke: transparent; }
+  .anim { fill: none; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .6s ease-out forwards; pointer-events: none; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .ann-hl { stroke: var(--hl); opacity: .5; }
+  .ann-ul, .ann-st { stroke: var(--ink); stroke-width: 3; }
+  .ann-ci { stroke: var(--circle); stroke-width: 3; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+  pre { background: #f6f6f2; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; overflow: auto; max-height: 220px; white-space: pre-wrap; word-break: break-word; margin: 8px 0 0; }
+  .lines { margin-top: 8px; font-size: 13px; }
+  .line { display: flex; gap: 4px; flex-wrap: wrap; padding: 3px 0; border-bottom: 1px dashed var(--border); }
+  .line .ln { color: var(--muted); width: 30px; flex: none; font-size: 11px; padding-top: 2px; }
+  .chip { border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; cursor: pointer; background: #fff; }
+  .chip small { color: var(--muted); font-size: 10px; margin-right: 3px; }
+  .chip.selected { background: rgba(22, 163, 74, .15); border-color: var(--select); }
+  .block { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin-top: 6px; cursor: pointer; white-space: pre-wrap; font-size: 13px; }
+  .block.selected { border-color: var(--select); background: rgba(22, 163, 74, .08); }
+  .badge { display: inline-block; font-size: 11px; background: var(--mistral-fill); color: var(--mistral); border-radius: 4px; padding: 0 6px; margin-right: 6px; }
+  label.toggle { font-size: 12px; color: var(--muted); display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Google Vision vs Mistral OCR: neyi, ne kadar hassas işaretleyebiliyoruz?</h1>
+  <div class="legend">
+    <div><b class="g">Google Vision → her kelime ayrı kutu.</b><br>Her kelime için 4 köşe noktası (piksel) döner:
+      <code>{"id":"w72","text":"karmaşık","polygon":[[x,y]×4]}</code><br>→ Tek bir kelimenin altını çizebiliriz.</div>
+    <div><b class="m">Mistral OCR → sadece blok (paragraf / şık / denklem) kutusu.</b><br>Her blok için bir dikdörtgen döner:
+      <code>{"type":"list","top_left_x":…, "bottom_right_y":…}</code><br>→ Ancak bütün bloğu işaretleyebiliriz. Buna karşılık metin LaTeX olarak temiz geliyor.</div>
+    <div><b>Koordinatlar nasıl okunur?</b><br>İkisi de orijinal görselin pikselleri cinsinden. Sol üst köşe <code>(0,0)</code>, x sağa, y aşağı doğru artar.<br><b>Dene:</b> bir kutuya tıkla, sonra <i>Underline</i> ya da <i>Daire</i> butonuna bas.</div>
+  </div>
+</header>
+<nav id="tabs"></nav>
+<main id="main"></main>
+
+<script>
+const DATA = __DATA__;
+const LABELS = { turkish: "Türkçe", history: "Tarih", sets: "Kümeler", physics: "Fizik" };
+let current = 0;
+
+// ── Rendering ───────────────────────────────────────────────────
+
+function renderTabs() {
+  const nav = document.getElementById("tabs");
+  nav.innerHTML = "";
+  DATA.forEach((q, i) => {
+    const b = document.createElement("button");
+    b.textContent = LABELS[q.name] ?? q.name;
+    b.className = i === current ? "active" : "";
+    b.onclick = () => { current = i; renderTabs(); renderMain(); };
+    nav.append(b);
+  });
+}
+
+function renderMain() {
+  const q = DATA[current];
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  main.append(
+    createPanel({
+      engine: "google",
+      title: "Google Vision",
+      color: "var(--google)",
+      stats: `${q.google.words.length} kelime kutusu · ${new Set(q.google.words.map((w) => w.line)).size} satır`,
+      image: q.image,
+      items: q.google.words.map((w) => ({ id: w.id, label: w.text, polygon: w.polygon, line: w.line, raw: w })),
+    }),
+    createPanel({
+      engine: "mistral",
+      title: "Mistral OCR",
+      color: "var(--mistral)",
+      stats: `${q.mistral.blocks.length} blok kutusu · görsel ${q.mistral.dimensions.width}×${q.mistral.dimensions.height}px`,
+      image: q.image,
+      items: q.mistral.blocks.map((b) => ({ id: b.id, label: b.content, type: b.type, polygon: b.polygon, raw: b })),
+      markdown: q.mistral.markdown,
+    }),
+  );
+}
+
+function createPanel({ engine, title, color, stats, image, items, markdown }) {
+  const state = { selected: [], lastIndex: null };
+  const panel = el("section", "panel");
+  panel.innerHTML = `
+    <h2><span class="dot" style="background:${color}"></span>${title}
+      <label class="toggle"><input type="checkbox" data-hide> kutuları gizle</label></h2>
+    <div class="stats">${stats}</div>
+    <div class="toolbar">
+      <button data-tool="hl">🖍 Highlight</button>
+      <button data-tool="ul">Underline</button>
+      <button data-tool="ci">◯ Daire</button>
+      <button data-tool="st">Üstünü çiz</button>
+      <button data-tool="clear">Temizle</button>
+    </div>
+    <div class="hint">${engine === "google" ? "Bir kelimeye tıkla. Shift'e basılı tutarak tıklarsan aralık seçilir: birden fazla satıra yayılan seçim satır başına ayrı kutuya bölünür." : "Bir bloğa tıkla. Mistral'de bundan küçük bir birim yok."}</div>
+    <div class="stage"><img src="${image}"><svg><g class="boxes"></g><g class="anns"></g></svg></div>
+    <details open><summary>Seçilenin ham verisi (koordinatlar)</summary><pre data-raw>Henüz bir şey seçmedin.</pre></details>
+    <details ${engine === "google" ? "open" : ""}><summary>${engine === "google" ? "Okunan kelimeler (ID'leriyle, satır satır)" : "Okunan bloklar"}</summary><div class="lines" data-list></div></details>
+    ${markdown ? `<details><summary>Mistral markdown çıktısı (öğretmen agent'ın göreceği temiz metin)</summary><pre>${escapeHtml(markdown)}</pre></details>` : ""}
+  `;
+
+  const img = panel.querySelector("img");
+  const svg = panel.querySelector("svg");
+  const boxes = panel.querySelector(".boxes");
+  const anns = panel.querySelector(".anns");
+  const raw = panel.querySelector("[data-raw]");
+  const list = panel.querySelector("[data-list]");
+
+  const setViewBox = () => svg.setAttribute("viewBox", `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
+  img.complete ? setViewBox() : img.addEventListener("load", setViewBox);
+
+  items.forEach((item, index) => {
+    const poly = svgEl("polygon", { points: item.polygon.map((p) => p.join(",")).join(" "), class: `box ${engine}`, "data-id": item.id });
+    poly.append(svgEl("title", {}, `${item.id}${item.type ? ` (${item.type})` : ""}: ${item.label}`));
+    poly.addEventListener("click", (e) => select(index, e.shiftKey));
+    boxes.append(poly);
+  });
+
+  if (engine === "google") {
+    const byLine = Object.groupBy(items.map((it, i) => ({ ...it, index: i })), (it) => it.line);
+    for (const [line, words] of Object.entries(byLine)) {
+      const row = el("div", "line");
+      row.append(el("span", "ln", `L${line}`));
+      for (const w of words) {
+        const chip = el("span", "chip");
+        chip.dataset.id = w.id;
+        chip.innerHTML = `<small>${w.id}</small>${escapeHtml(w.label)}`;
+        chip.addEventListener("click", (e) => select(w.index, e.shiftKey));
+        row.append(chip);
+      }
+      list.append(row);
+    }
+  } else {
+    items.forEach((b, i) => {
+      const card = el("div", "block");
+      card.dataset.id = b.id;
+      card.innerHTML = `<span class="badge">${b.id} · ${b.type}</span>${escapeHtml(b.label ?? "")}`;
+      card.addEventListener("click", (e) => select(i, e.shiftKey));
+      list.append(card);
+    });
+  }
+
+  panel.querySelector("[data-hide]").addEventListener("change", (e) => panel.classList.toggle("hide-boxes", e.target.checked));
+  panel.querySelectorAll("[data-tool]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const tool = btn.dataset.tool;
+      if (tool === "clear") { anns.innerHTML = ""; return; }
+      for (const rect of selectionRects()) anns.append(drawAnnotation(tool, rect));
+    }),
+  );
+
+  function select(index, extend) {
+    if (extend && state.lastIndex !== null) {
+      const [a, b] = [state.lastIndex, index].sort((x, y) => x - y);
+      state.selected = items.slice(a, b + 1).map((it) => it.id);
+    } else {
+      state.selected = [items[index].id];
+      state.lastIndex = index;
+    }
+    panel.querySelectorAll("[data-id]").forEach((n) => n.classList.toggle("selected", state.selected.includes(n.dataset.id)));
+    const picked = items.filter((it) => state.selected.includes(it.id)).map((it) => it.raw);
+    raw.textContent = JSON.stringify(picked.length === 1 ? picked[0] : picked, null, 1).replace(/\[\n\s+(\d+),\n\s+(\d+)\n\s+\]/g, "[$1,$2]");
+  }
+
+  // Selected items merged into one rectangle per line (Google) or per block (Mistral).
+  function selectionRects() {
+    const picked = items.filter((it) => state.selected.includes(it.id));
+    const groups = engine === "google" ? Object.values(Object.groupBy(picked, (it) => it.line)) : picked.map((it) => [it]);
+    return groups.map((group) => {
+      const xs = group.flatMap((it) => it.polygon.map((p) => p[0]));
+      const ys = group.flatMap((it) => it.polygon.map((p) => p[1]));
+      return { x1: Math.min(...xs), y1: Math.min(...ys), x2: Math.max(...xs), y2: Math.max(...ys) };
+    });
+  }
+
+  return panel;
+}
+
+function drawAnnotation(tool, { x1, y1, x2, y2 }) {
+  const h = y2 - y1;
+  const midY = (y1 + y2) / 2;
+  const wobble = (x, y) => `${x} ${y + (Math.random() - 0.5) * 2}`;
+  switch (tool) {
+    case "hl":
+      return svgEl("path", { d: `M ${x1 - 2} ${midY} L ${x2 + 2} ${midY}`, class: "anim ann-hl", "stroke-width": h + 4, pathLength: 1 });
+    case "ul":
+      return svgEl("path", { d: `M ${wobble(x1, y2 + 4)} Q ${wobble((x1 + x2) / 2, y2 + 6)} ${wobble(x2, y2 + 3)}`, class: "anim ann-ul", pathLength: 1 });
+    case "st":
+      return svgEl("path", { d: `M ${wobble(x1 - 2, midY)} L ${wobble(x2 + 2, midY)}`, class: "anim ann-st", pathLength: 1 });
+    case "ci":
+      return svgEl("ellipse", { cx: (x1 + x2) / 2, cy: midY, rx: (x2 - x1) / 2 + 10, ry: h / 2 + 8, class: "anim ann-ci", pathLength: 1 });
+  }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function svgEl(tag, attrs, text) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text) node.textContent = text;
+  return node;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+}
+
+renderTabs();
+renderMain();
+</script>
+</body>
+</html>

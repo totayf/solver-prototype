@@ -1,0 +1,297 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
+  "vcs": {
+    "enabled": false
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**",
+      "!dist/**",
+      "!.expo/**",
+      "!.cache/**",
+      "!.data/**",
+      "!android/**",
+      "!ios/**",
+      "!**/expo-env.d.ts",
+      "!**/node_modules/**",
+      "!scripts/out/**",
+      "!scripts/questions/**"
+    ]
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "complexity": {
+        "noAdjacentSpacesInRegex": "error",
+        "noExtraBooleanCast": "error",
+        "noUselessCatch": "error",
+        "noUselessEscapeInRegex": "error",
+        "noUselessTypeConstraint": "error"
+      },
+      "correctness": {
+        "noChildrenProp": "error",
+        "noConstantCondition": "error",
+        "noEmptyCharacterClassInRegex": "error",
+        "noEmptyPattern": "error",
+        "noPrecisionLoss": "error",
+        "noSelfAssign": "error",
+        "noSwitchDeclarations": "error",
+        "noUnreachable": "error",
+        "noUnsafeFinally": "error",
+        "noUnsafeOptionalChaining": "error",
+        "noUnusedLabels": "error",
+        "noUnusedPrivateClassMembers": "error",
+        "noUnusedVariables": "warn",
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "error",
+        "useIsNan": "error",
+        "useJsxKeyInIterable": "error",
+        "useValidForDirection": "error",
+        "useValidTypeof": "error",
+        "useYield": "error"
+      },
+      "style": {
+        "noCommonJs": "off",
+        "noNamespace": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": [
+                  "@/app/**",
+                  "@/widgets/**",
+                  "@/features/**",
+                  "@/entities/**"
+                ],
+                "message": "FSD boundary: `shared` may not import from layers above it."
+              },
+              {
+                "group": ["@/**/server/**", "@/**/server"],
+                "message": "Server-only code: client modules may not import `server/` (only API routes and other server code can)."
+              }
+            ]
+          }
+        },
+        "useArrayLiterals": "error",
+        "useAsConstAssertion": "error",
+        "useBlockStatements": "off",
+        "useConst": "error"
+      },
+      "suspicious": {
+        "noAsyncPromiseExecutor": "error",
+        "noCatchAssign": "error",
+        "noCommentText": "error",
+        "noCompareNegZero": "error",
+        "noConstantBinaryExpressions": "error",
+        "noControlCharactersInRegex": "error",
+        "noDebugger": "error",
+        "noDuplicateCase": "error",
+        "noDuplicateElseIf": "error",
+        "noDuplicateJsxProps": "error",
+        "noDuplicateObjectKeys": "error",
+        "noEmptyBlockStatements": "error",
+        "noExplicitAny": "error",
+        "noExtraNonNullAssertion": "error",
+        "noFallthroughSwitchClause": "error",
+        "noGlobalAssign": "error",
+        "noIrregularWhitespace": "error",
+        "noMisleadingCharacterClass": "error",
+        "noMisleadingInstantiator": "error",
+        "noNonNullAssertedOptionalChain": "error",
+        "noPrototypeBuiltins": "error",
+        "noShadowRestrictedNames": "error",
+        "noSparseArray": "error",
+        "noUnsafeDeclarationMerging": "error",
+        "noUnsafeNegation": "error",
+        "noUselessRegexBackrefs": "error",
+        "noVar": "error",
+        "noWith": "error",
+        "useGetterReturn": "error",
+        "useNamespaceKeyword": "error"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    },
+    "globals": ["__DEV__", "require", "module", "process", "console"]
+  },
+  "overrides": [
+    {
+      "includes": ["src/shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/widgets/**",
+                      "@/features/**",
+                      "@/entities/**"
+                    ],
+                    "message": "FSD boundary: `shared` may not import from any slice layer."
+                  },
+                  {
+                    "group": ["@/**/server/**", "@/**/server"],
+                    "message": "Server-only code: client modules may not import `server/` (only API routes and other server code can)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/entities/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/widgets/**",
+                      "@/features/**",
+                      "@/entities/**"
+                    ],
+                    "message": "FSD boundary: `entities` may only import from `shared` (use relative paths inside the slice)."
+                  },
+                  {
+                    "group": ["@/**/server/**", "@/**/server"],
+                    "message": "Server-only code: client modules may not import `server/` (only API routes and other server code can)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/widgets/**", "@/features/**"],
+                    "message": "FSD boundary: `features` may only import from `entities` and `shared` (use relative paths inside the slice)."
+                  },
+                  {
+                    "group": [
+                      "@/entities/*/**",
+                      "@/features/*/**",
+                      "@/widgets/*/**"
+                    ],
+                    "message": "FSD: import another slice through its barrel (`@/features/auth`), not a deep path."
+                  },
+                  {
+                    "group": ["@/**/server/**", "@/**/server"],
+                    "message": "Server-only code: client modules may not import `server/` (only API routes and other server code can)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/widgets/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/widgets/**"],
+                    "message": "FSD boundary: `widgets` may only import from `features`, `entities` and `shared` (use relative paths inside the slice)."
+                  },
+                  {
+                    "group": [
+                      "@/entities/*/**",
+                      "@/features/*/**",
+                      "@/widgets/*/**"
+                    ],
+                    "message": "FSD: import another slice through its barrel (`@/features/auth`), not a deep path."
+                  },
+                  {
+                    "group": ["@/**/server/**", "@/**/server"],
+                    "message": "Server-only code: client modules may not import `server/` (only API routes and other server code can)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/app/**", "src/app-shell/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@/entities/*/**",
+                      "@/features/*/**",
+                      "@/widgets/*/**"
+                    ],
+                    "message": "FSD: import another slice through its barrel (`@/features/auth`), not a deep path."
+                  },
+                  {
+                    "group": ["@/**/server/**", "@/**/server"],
+                    "message": "Server-only code: client modules may not import `server/` (only API routes and other server code can)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/server/**", "src/app/api/**", "scripts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ]
+}

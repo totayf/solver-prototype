@@ -1,0 +1,30 @@
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+*.tsbuildinfo
+.DS_Store
+
+# Native (generated)
+/ios
+/android
+
+# Local env files
+.env*
+!.env.example
+
+# Generated lessons (photo, audio, lesson JSON)
+.data/
+.cache/
+scripts/out/
+
+# ÖSYM booklets and crops: copyrighted, internal testing only
+scripts/questions/yks-2026/
+
+# TÜBİTAK olympiad booklet crops: copyrighted, internal testing only
+scripts/questions/tubitak-2024/
+
+# Wrangler local state and build output
+.wrangler/

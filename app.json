@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "Solver",
+    "slug": "solver",
+    "version": "0.1.0",
+    "orientation": "default",
+    "scheme": "solver",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Solver needs camera access to scan your questions.",
+        "NSPhotoLibraryUsageDescription": "Solver needs photo library access so you can upload question images."
+      }
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kovanacademy.solver",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0A0A0A"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Solver needs photo library access so you can upload question images.",
+          "cameraPermission": "Solver needs camera access to scan your questions."
+        }
+      ],
+      "expo-status-bar",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "icon": "./assets/icon.png"
+  }
+}

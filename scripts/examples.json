@@ -1,0 +1,274 @@
+[
+  {
+    "id": "tyt-tur-26",
+    "exam": "TYT",
+    "subject": "Türkçe",
+    "topic": "Paragrafta Ana Düşünce",
+    "answer": "D",
+    "file": "yks-2026/tyt-tur-26.png"
+  },
+  {
+    "id": "tyt-mat-23",
+    "exam": "TYT",
+    "subject": "Matematik",
+    "topic": "Daire Grafiği ve Süre Problemi",
+    "answer": "D",
+    "file": "yks-2026/tyt-mat-23.png"
+  },
+  {
+    "id": "tyt-mat-28",
+    "exam": "TYT",
+    "subject": "Matematik",
+    "topic": "Koridordaki Odalar",
+    "answer": "B",
+    "file": "yks-2026/tyt-mat-28.png"
+  },
+  {
+    "id": "tyt-mat-30",
+    "exam": "TYT",
+    "subject": "Matematik",
+    "topic": "Olasılık",
+    "answer": "A",
+    "file": "yks-2026/tyt-mat-30.png"
+  },
+  {
+    "id": "tyt-mat-36",
+    "exam": "TYT",
+    "subject": "Geometri",
+    "topic": "Deltoid ve Açılar",
+    "answer": "B",
+    "file": "yks-2026/tyt-mat-36.png"
+  },
+  {
+    "id": "tyt-mat-39",
+    "exam": "TYT",
+    "subject": "Geometri",
+    "topic": "Dikdörtgenler Prizması",
+    "answer": "B",
+    "file": "yks-2026/tyt-mat-39.png"
+  },
+  {
+    "id": "tyt-cog-6",
+    "exam": "TYT",
+    "subject": "Coğrafya",
+    "topic": "İklim Grafiği",
+    "answer": "A",
+    "file": "yks-2026/tyt-cog-6.png"
+  },
+  {
+    "id": "tyt-cog-7",
+    "exam": "TYT",
+    "subject": "Coğrafya",
+    "topic": "Volkanik Yer Şekilleri",
+    "answer": "C",
+    "file": "yks-2026/tyt-cog-7.png"
+  },
+  {
+    "id": "tyt-cog-8",
+    "exam": "TYT",
+    "subject": "Coğrafya",
+    "topic": "Seyrek Nüfuslu Alanlar",
+    "answer": "E",
+    "file": "yks-2026/tyt-cog-8.png"
+  },
+  {
+    "id": "ayt-mat-15",
+    "exam": "AYT",
+    "subject": "Matematik",
+    "topic": "Otoparkta Sayma",
+    "answer": "B",
+    "file": "yks-2026/ayt-mat-15.png"
+  },
+  {
+    "id": "ayt-mat-16",
+    "exam": "AYT",
+    "subject": "Matematik",
+    "topic": "Bağımsız Olaylar",
+    "answer": "E",
+    "file": "yks-2026/ayt-mat-16.png"
+  },
+  {
+    "id": "ayt-mat-23",
+    "exam": "AYT",
+    "subject": "Matematik",
+    "topic": "Türev Grafiğinden Kök Yorumu",
+    "answer": "C",
+    "file": "yks-2026/ayt-mat-23.png"
+  },
+  {
+    "id": "ayt-mat-26",
+    "exam": "AYT",
+    "subject": "Matematik",
+    "topic": "İntegral ile Alan",
+    "answer": "B",
+    "file": "yks-2026/ayt-mat-26.png"
+  },
+  {
+    "id": "ayt-mat-34",
+    "exam": "AYT",
+    "subject": "Geometri",
+    "topic": "Çemberde Kiriş ve Yay",
+    "answer": "B",
+    "file": "yks-2026/ayt-mat-34.png"
+  },
+  {
+    "id": "ayt-fiz-1",
+    "exam": "AYT",
+    "subject": "Fizik",
+    "topic": "Makara ve Kuvvet Dengesi",
+    "answer": "A",
+    "file": "yks-2026/ayt-fiz-1.png"
+  },
+  {
+    "id": "ayt-fiz-8",
+    "exam": "AYT",
+    "subject": "Fizik",
+    "topic": "Enerji Korunumu",
+    "answer": "A",
+    "file": "yks-2026/ayt-fiz-8.png"
+  },
+  {
+    "id": "ayt-kim-20",
+    "exam": "AYT",
+    "subject": "Kimya",
+    "topic": "Tepkime Enerji Diyagramı",
+    "answer": "E",
+    "file": "yks-2026/ayt-kim-20.png"
+  },
+  {
+    "id": "ayt-cog-36",
+    "exam": "AYT",
+    "subject": "Coğrafya",
+    "topic": "Türkiye'de Feldspat Yatakları",
+    "answer": "D",
+    "file": "yks-2026/ayt-cog-36.png"
+  },
+  {
+    "id": "ayt-cog-15",
+    "exam": "AYT",
+    "subject": "Coğrafya",
+    "topic": "Çeltik Tarımı",
+    "answer": "A",
+    "file": "yks-2026/ayt-cog-15.png"
+  },
+  {
+    "id": "ayt-cog-18",
+    "exam": "AYT",
+    "subject": "Coğrafya",
+    "topic": "İlk Kültür Merkezleri",
+    "answer": "B",
+    "file": "yks-2026/ayt-cog-18.png"
+  },
+  {
+    "id": "olimpiyat-mat-6",
+    "exam": "ZOR",
+    "subject": "Matematik",
+    "topic": "Kareler Toplamı",
+    "answer": "C",
+    "file": "tubitak-2024/olimpiyat-mat-6.png"
+  },
+  {
+    "id": "olimpiyat-mat1-4",
+    "exam": "ZOR",
+    "subject": "Matematik",
+    "topic": "Kutulara Top Dağıtma",
+    "answer": "E",
+    "file": "tubitak-2024/olimpiyat-mat1-4.png"
+  },
+  {
+    "id": "olimpiyat-mat2-2024-4",
+    "exam": "ZOR",
+    "subject": "Matematik",
+    "topic": "Bölen Denklemleri (2. Aşama)",
+    "answer": "n = 2024",
+    "file": "tubitak-2024/olimpiyat-mat2-2024-4.png"
+  },
+  {
+    "id": "olimpiyat-mat2-2025-2",
+    "exam": "ZOR",
+    "subject": "Matematik",
+    "topic": "Domino Boyama İspatı (2. Aşama)",
+    "answer": "ispat",
+    "file": "tubitak-2024/olimpiyat-mat2-2025-2.png"
+  },
+  {
+    "id": "olimpiyat-mat1-1",
+    "exam": "ZOR",
+    "subject": "Geometri",
+    "topic": "Kenarortay ve Açıortay",
+    "answer": "B",
+    "file": "tubitak-2024/olimpiyat-mat1-1.png"
+  },
+  {
+    "id": "olimpiyat-mat1-29",
+    "exam": "ZOR",
+    "subject": "Geometri",
+    "topic": "Dikdörtgende Kesişen Çemberler",
+    "answer": "C",
+    "file": "tubitak-2024/olimpiyat-mat1-29.png"
+  },
+  {
+    "id": "olimpiyat-mat2-2024-2",
+    "exam": "ZOR",
+    "subject": "Geometri",
+    "topic": "Diklik Merkezi ve Çemberdeşlik İspatı (2. Aşama)",
+    "answer": "ispat",
+    "file": "tubitak-2024/olimpiyat-mat2-2024-2.png"
+  },
+  {
+    "id": "olimpiyat-fiz-7",
+    "exam": "ZOR",
+    "subject": "Fizik",
+    "topic": "Prizmalar Arası Sürtünme",
+    "answer": "D",
+    "file": "tubitak-2024/olimpiyat-fiz-7.png"
+  },
+  {
+    "id": "olimpiyat-fiz1-11",
+    "exam": "ZOR",
+    "subject": "Fizik",
+    "topic": "İki Üreteçli Devre",
+    "answer": "C",
+    "file": "tubitak-2024/olimpiyat-fiz1-11.png"
+  },
+  {
+    "id": "olimpiyat-fiz2-2024-1",
+    "exam": "ZOR",
+    "subject": "Fizik",
+    "topic": "Rüzgâr Türbini Verimi (2. Aşama)",
+    "answer": "v₄/v₁ = 1 − 2n; P = 2ρSv₁³n(1 − n)²; verim 4n(1 − n)²; en fazla 16/27",
+    "file": "tubitak-2024/olimpiyat-fiz2-2024-1.png"
+  },
+  {
+    "id": "olimpiyat-fiz2-2024-7",
+    "exam": "ZOR",
+    "subject": "Fizik",
+    "topic": "Sıkıştırılan Gaz (2. Aşama)",
+    "answer": "Q₁ = P₀V₀ ln n; Q₂ = (3/2)P₀V₀(n^(2/3) − 1)",
+    "file": "tubitak-2024/olimpiyat-fiz2-2024-7.png"
+  },
+  {
+    "id": "olimpiyat-kim1-29",
+    "exam": "ZOR",
+    "subject": "Kimya",
+    "topic": "Gaz Dengesi ve Kc",
+    "answer": "C",
+    "file": "tubitak-2024/olimpiyat-kim1-29.png"
+  },
+  {
+    "id": "olimpiyat-bio1-30",
+    "exam": "ZOR",
+    "subject": "Biyoloji",
+    "topic": "Epistasi ve Üç Gen",
+    "answer": "E",
+    "file": "tubitak-2024/olimpiyat-bio1-30.png"
+  },
+  {
+    "id": "olimpiyat-cog-32",
+    "exam": "ZOR",
+    "subject": "Coğrafya",
+    "topic": "Okyanus Rotası",
+    "answer": "A",
+    "file": "tubitak-2024/olimpiyat-cog-32.png"
+  }
+]
