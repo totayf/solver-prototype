@@ -10,10 +10,12 @@ import {
 } from "@/entities/example";
 import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
+import { useNavigationLock } from "@/shared/lib/use-navigation-lock";
 import { Button, Screen, SegmentedControl, Text } from "@/shared/ui";
 
 export default function ExamplesPage() {
   const { data, error, refetch } = useExamples();
+  const navigate = useNavigationLock();
   const [exam, setExam] = useState<ExampleExam>("TYT");
   const questions = data?.questions.filter((q) => q.exam === exam) ?? [];
 
@@ -60,10 +62,12 @@ export default function ExamplesPage() {
                 key={question.id}
                 question={question}
                 onPress={() =>
-                  router.push({
-                    pathname: "/example/[id]",
-                    params: { id: question.id },
-                  })
+                  navigate(() =>
+                    router.push({
+                      pathname: "/example/[id]",
+                      params: { id: question.id },
+                    }),
+                  )
                 }
               />
             ))}

@@ -10,6 +10,7 @@ import { apiOrigin } from "@/shared/api/api-origin";
 import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
 import { cn } from "@/shared/lib/cn";
+import { useNavigationLock } from "@/shared/lib/use-navigation-lock";
 import { Icon, PressableScale, Screen, Text } from "@/shared/ui";
 
 export default function ExamplePage() {
@@ -18,6 +19,7 @@ export default function ExamplePage() {
   const question = data?.questions.find((q) => q.id === id);
   const { generate, pending, error } = useGenerateExample(id);
   const [aspect, setAspect] = useState(1);
+  const navigate = useNavigationLock();
 
   return (
     <Screen edges={["top", "left", "right"]}>
@@ -73,10 +75,12 @@ export default function ExamplePage() {
                   disabled={working}
                   onPress={() =>
                     lessonId
-                      ? router.push({
-                          pathname: "/lesson/[id]",
-                          params: { id: lessonId },
-                        })
+                      ? navigate(() =>
+                          router.push({
+                            pathname: "/lesson/[id]",
+                            params: { id: lessonId },
+                          }),
+                        )
                       : generate(model.id)
                   }
                   className={cn(

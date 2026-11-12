@@ -66,11 +66,18 @@ path.ink { stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
 
 .answer-stamp {
   position: absolute; top: 64px; right: 16px; padding: 8px 14px; border-radius: 12px;
+  max-width: min(46%, 420px);
   background: #0A0A0A; color: #fff; font-size: 15px; font-weight: 500;
   display: flex; align-items: baseline; gap: 6px;
   animation: pop .45s cubic-bezier(.2,1.5,.4,1) both;
 }
-.answer-stamp strong { font-size: 24px; font-weight: 700; }
+.answer-stamp .answer-label { flex: none; }
+.answer-stamp strong { font-size: 24px; font-weight: 700; min-width: 0; }
+/* Open and proof answers are sentences: smaller, at most two lines. */
+.answer-stamp strong.answer-long {
+  font-size: 16px; line-height: 1.3; overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
 @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 /* ── Board ─────────────────────────────────────────────────────────────── */
@@ -92,6 +99,71 @@ path.ink { stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
   opacity: 0; pointer-events: none; transition: opacity .25s ease;
 }
 .lesson-skin[data-controls-visible] .lesson-top { opacity: 1; pointer-events: auto; }
+.lesson-top-spacer { flex: 1; }
+.top-pill {
+  display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 999px;
+  background: rgba(255,255,255,.16); color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.top-pill svg { width: 18px; height: 18px; }
+.top-pill[aria-pressed="true"] { background: #fff; color: #0A0A0A; }
+
+/* ── Captions ──────────────────────────────────────────────────────────── */
+.caption {
+  position: absolute; left: 50%; bottom: 18px; z-index: 20; transform: translateX(-50%);
+  max-width: min(86%, 760px); padding: 6px 12px; border-radius: 10px;
+  background: rgba(10,10,10,.78); color: #fff; font-size: 17px; line-height: 1.35; font-weight: 500; text-align: center;
+  transition: bottom .25s ease; pointer-events: none;
+}
+.lesson-skin[data-controls-visible] .caption { bottom: 72px; }
+
+/* ── Panels and cards over the lesson ─────────────────────────────────── */
+.chapters {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 50; width: min(380px, 48%);
+  display: flex; flex-direction: column; background: #fff; box-shadow: -8px 0 24px rgba(0,0,0,.12);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 12px 12px;
+}
+.chapters-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 10px; }
+.chapters-head h2 { margin: 0; font-size: 18px; color: #0A0A0A; }
+.chapters-close { border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; color: #737373; padding: 8px; cursor: pointer; }
+.chapters ol { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.chapter {
+  width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left; border: 0; border-radius: 12px;
+  padding: 10px; background: none; font: inherit; color: #0A0A0A; cursor: pointer;
+}
+.chapter[aria-current="step"] { background: #F2F2F2; }
+.chapter-number { flex: none; width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center; background: #0A0A0A; color: #fff; font-size: 13px; font-weight: 700; }
+.chapter-text { flex: 1; font-size: 14px; line-height: 1.35; }
+.chapter-time { flex: none; font-size: 12px; color: #737373; padding-top: 4px; font-variant-numeric: tabular-nums; }
+
+.overlay {
+  position: absolute; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px;
+  background: rgba(255,255,255,.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.card {
+  max-width: 460px; width: 100%; padding: 20px; border-radius: 18px; background: #fff; color: #0A0A0A;
+  box-shadow: 0 0 0 1px var(--border), 0 12px 32px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 12px;
+}
+.card p { margin: 0; font-size: 16px; line-height: 1.4; }
+.card .card-title { font-size: 18px; font-weight: 700; }
+.card .card-muted { color: #737373; font-size: 14px; }
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.card-button {
+  flex: 1; min-width: 120px; height: 44px; border-radius: 999px; border: 1px solid var(--border);
+  background: #fff; color: #0A0A0A; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.card-button.primary { background: #0A0A0A; border-color: #0A0A0A; color: #fff; }
+.card-button:disabled { opacity: .5; }
+.end-trap strong { color: var(--ink); }
+.end-next { font-weight: 600; animation: rise .4s ease .9s both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── Reduced motion: no camera glide, pops or slides ───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .stage-canvas, .board, .caption, .lesson-top { transition: none; }
+  .answer-stamp, .end-next { animation: none; }
+}
+.reduce-motion .stage-canvas, .reduce-motion .board, .reduce-motion .caption, .reduce-motion .lesson-top { transition: none; }
+.reduce-motion .answer-stamp, .reduce-motion .end-next { animation: none; }
 
 /* ── Start overlay ─────────────────────────────────────────────────────── */
 .start {
@@ -107,9 +179,3 @@ path.ink { stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
 .start-button:active { transform: scale(.95); }
 .start-button svg { width: 18px; height: 18px; fill: #fff; }
 `;
-
-/** Web fonts the player needs: Shantell Sans for the pen (Turkish and math symbols) and KaTeX. */
-export const PLAYER_STYLESHEETS = [
-  "https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@500;600&display=swap",
-  "https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.css",
-];

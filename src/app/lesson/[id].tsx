@@ -36,7 +36,14 @@ export default function LessonPage() {
       <SafeAreaView className="flex-1 bg-background">
         <Stack.Screen options={{ animation: "fade" }} />
         <StatusBar hidden />
-        <LessonPlayer lesson={lesson} onExit={leave} />
+        <LessonPlayer
+          lesson={lesson}
+          onExit={leave}
+          onReloadMedia={async () => {
+            const fresh = await refetch();
+            return fresh.data?.status === "ready" ? fresh.data.lesson : null;
+          }}
+        />
       </SafeAreaView>
     );
   }
