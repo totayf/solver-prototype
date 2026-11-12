@@ -2,17 +2,29 @@
  * Uploads the local example catalog (.data/catalog) and every lesson it
  * references (.data/lessons) to Kovan's Dev Solver API.
  *
- *   SOLVER_KEY=… bun scripts/upload-catalog.ts https://kovanacademy.com
+ *   SOLVER_ADMIN_KEY=… bun scripts/upload-catalog.ts https://kovanacademy.com
+ *
+ * Catalog, import and image writes are admin writes: they send the admin key
+ * (`SOLVER_ADMIN_KEY`, header `x-solver-admin-key`). Until the server has
+ * moved them to that key, `SOLVER_KEY` (the app key, `x-solver-key`) is
+ * still sent, and used alone when no admin key is set.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const origin = process.argv[2]?.replace(/\/$/, "");
-const key = process.env.SOLVER_KEY;
-if (!origin || !key) {
-  console.error("Usage: SOLVER_KEY=… bun scripts/upload-catalog.ts <origin>");
+const appKey = process.env.SOLVER_KEY;
+const adminKey = process.env.SOLVER_ADMIN_KEY;
+if (!origin || !(adminKey || appKey)) {
+  console.error(
+    "Usage: SOLVER_ADMIN_KEY=… [SOLVER_KEY=…] bun scripts/upload-catalog.ts <origin>",
+  );
   process.exit(1);
 }
+const authHeaders: Record<string, string> = {
+  ...(appKey ? { "x-solver-key": appKey } : {}),
+  ...(adminKey ? { "x-solver-admin-key": adminKey } : {}),
+};
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const catalog = JSON.parse(
@@ -58,10 +70,11 @@ async function send(method: string, route: string, body: unknown) {
   const res = await fetch(origin + route, {
     method,
     headers: {
-      "x-solver-key": key as string,
+      ...authHeaders,
       "content-type": isBytes ? "application/octet-stream" : "application/json",
     },
-    body: isBytes ? body : JSON.stringify(body),
+    // A Buffer is a Uint8Array; copy it into a plain ArrayBuffer-backed view for fetch.
+    body: isBytes ? new Uint8Array(body) : JSON.stringify(body),
   });
   if (!res.ok) {
     throw new Error(`${method} ${route}: ${res.status} ${await res.text()}`);
@@ -69,12 +82,16 @@ async function send(method: string, route: string, body: unknown) {
 }
 
 /** Tags come from the default (Argon) lesson, else any lesson. */
-async function defaultTools(question: CatalogQuestion): Promise<string[]> {
+async function defaultTools(
+  question: Pick<CatalogQuestion, "lessons">,
+): Promise<string[]> {
   const id = question.lessons.argon ?? Object.values(question.lessons)[0];
   if (!id) return [];
   const file = path.join(DATA_DIR, "lessons", id, "lesson.json");
-  return (JSON.parse(await readFile(file, "utf8")) as { tools?: string[] })
-    .tools ?? [];
+  const lesson = JSON.parse(await readFile(file, "utf8")) as {
+    tools?: string[];
+  };
+  return lesson.tools ?? [];
 }
 
 async function mapLimit<T>(
