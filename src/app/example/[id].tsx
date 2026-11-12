@@ -7,6 +7,7 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { EXAMPLE_MODELS, TOOL_LABELS, useExamples } from "@/entities/example";
 import { useGenerateExample } from "@/features/generate-example";
 import { apiOrigin } from "@/shared/api/api-origin";
+import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
 import { cn } from "@/shared/lib/cn";
 import { Icon, PressableScale, Screen, Text } from "@/shared/ui";
@@ -96,7 +97,7 @@ export default function ExamplePage() {
                     {lessonId
                       ? `${model.label} ile izle`
                       : working
-                        ? `${model.label} hazırlıyor… (1–2 dk)`
+                        ? `${model.label} hazırlıyor… (yaklaşık iki dakika)`
                         : `${model.label} ile üret`}
                   </Text>
                 </PressableScale>
@@ -105,7 +106,7 @@ export default function ExamplePage() {
           </View>
           {error && (
             <Text variant="caption" className="text-center text-foreground">
-              {error.message}
+              {friendlyError(error).message}
             </Text>
           )}
         </ScrollView>

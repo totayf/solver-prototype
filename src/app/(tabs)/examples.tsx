@@ -8,6 +8,7 @@ import {
   ExampleRow,
   useExamples,
 } from "@/entities/example";
+import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
 import { Button, Screen, SegmentedControl, Text } from "@/shared/ui";
 
@@ -38,7 +39,7 @@ export default function ExamplesPage() {
         {error ? (
           <View className="items-center gap-4">
             <Text variant="body" className="text-center">
-              {error.message}
+              {friendlyError(error).message}
             </Text>
             <Button
               label="Tekrar dene"
