@@ -31,24 +31,33 @@ const MODELS = [
   "gemini-2.5-flash-preview-tts",
   "gemini-2.5-pro-preview-tts",
 ] as const;
-/** Models whose daily quota ran out in this process. */
-const exhausted = new Set<string>();
+/**
+ * Models whose daily quota ran out, with when to try them again. Quotas reset
+ * daily, so an exhausted model is retried after a while instead of being
+ * skipped until the process restarts.
+ */
+const exhaustedUntil = new Map<string, number>();
+const EXHAUSTED_RETRY_MS = 60 * 60_000;
 const VOICE = "Achird";
 const SAMPLE_RATE = 24_000;
-const MAX_ATTEMPTS = 4;
-/** Longest rate-limit wait we accept before giving up on a clip. */
-const MAX_RETRY_DELAY_MS = 60_000;
+const MAX_ATTEMPTS = 3;
+/**
+ * Longest rate-limit wait we accept before giving up on a clip. A student is
+ * waiting: re-voicing the lesson with the fallback provider is faster than a
+ * minute-long back-off.
+ */
+const MAX_RETRY_DELAY_MS = 12_000;
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function requestPcm(text: string): Promise<Uint8Array> {
   let lastError = "";
   for (const model of MODELS) {
-    if (exhausted.has(model)) continue;
+    if ((exhaustedUntil.get(model) ?? 0) > Date.now()) continue;
     const result = await requestWithModel(model, text);
     if (result.pcm) return result.pcm;
     lastError = result.error;
     if (!result.dailyQuota) break;
-    exhausted.add(model);
+    exhaustedUntil.set(model, Date.now() + EXHAUSTED_RETRY_MS);
   }
   throw new Error(`Gemini TTS failed: ${lastError}`);
 }

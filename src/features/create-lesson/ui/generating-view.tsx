@@ -2,15 +2,21 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
+import type { GenerationStage } from "@/entities/lesson";
 import { APP } from "@/shared/lib/app-tokens";
 import { Text } from "@/shared/ui";
 
 /**
- * Waiting screen while the lesson is generated. The server doesn't stream
- * progress yet, so stages advance on typical timings.
+ * Waiting screen while the lesson is generated: the server's stage when it
+ * reports one, otherwise stages advance on typical timings.
  */
-export function GeneratingView() {
-  const stage = useStage();
+export function GeneratingView({
+  stage: reported,
+}: {
+  stage?: GenerationStage;
+}) {
+  const timed = useStage();
+  const stage = reported ? STAGE_INDEX[reported] : timed;
 
   return (
     <View className="flex-1 items-center justify-center gap-6">
@@ -59,6 +65,13 @@ function useStage(): number {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
+
+const STAGE_INDEX: Record<GenerationStage, number> = {
+  reading: 0,
+  solving: 1,
+  writing: 2,
+  voicing: 3,
+};
 
 const STAGES = [
   {

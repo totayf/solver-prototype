@@ -87,8 +87,12 @@ When the solver's program confirms the answer in a way a student finds convincin
 
 /**
  * Writes the lesson script, then checks it (ids, quotes, answer, figures) and
- * sends any problems back to the model — up to two repair rounds. Whatever
- * still fails afterwards is dropped by the resolver instead of drawn wrong.
+ * sends the problems back to the model — up to two repair rounds. A round
+ * regenerates the whole script, so it runs only for a blocking problem (wrong
+ * reveal, broken figure) or more small ones than `needsRepair` tolerates;
+ * whatever still fails is dropped by the resolver instead of drawn wrong.
+ * `onDraft` sees every generated script before it is checked, so narration
+ * can be voiced while a repair round runs.
  */
 export async function writeLessonScript({
   image,
@@ -98,6 +102,7 @@ export async function writeLessonScript({
   checks = [],
   model,
   onUsage,
+  onDraft,
 }: {
   image: Uint8Array;
   mediaType: string;
@@ -108,6 +113,7 @@ export async function writeLessonScript({
   /** Pins one model; the default chain otherwise. */
   model?: LessonModel;
   onUsage?: (usage: LanguageModelUsage) => void;
+  onDraft?: (script: LessonScript) => void;
 }): Promise<{ script: LessonScript; check: ScriptCheck; repairs: number }> {
   const system = lessonScriptPrompt(solution.subject ?? "diger");
   const messages: ModelMessage[] = [
@@ -137,7 +143,7 @@ export async function writeLessonScript({
     let generated: { object: LessonScript; usage: LanguageModelUsage };
     try {
       generated = await generateObject({
-        model: lessonModel(model),
+        model: lessonModel(model, "script"),
         providerOptions: scriptOptions,
         schema: lessonScriptSchema,
         system,
@@ -159,9 +165,10 @@ export async function writeLessonScript({
     }
     const { object: script, usage } = generated;
     onUsage?.(usage);
+    onDraft?.(script);
 
     const check = validateScript({ script, ocr, solution });
-    if (check.errors.length === 0 || repairs === MAX_REPAIRS) {
+    if (!needsRepair(script, check) || repairs === MAX_REPAIRS) {
       return { script, check, repairs };
     }
     messages.push(
@@ -175,6 +182,27 @@ export async function writeLessonScript({
 }
 
 const MAX_REPAIRS = 2;
+/** Small problems a script may keep without a repair round: at least this many… */
+const TOLERATED_MINOR = 2;
+/** …or this share of its actions, whichever is larger. */
+const TOLERATED_MINOR_SHARE = 0.15;
+
+/**
+ * Whether another full generation is worth its time and tokens: always for a
+ * blocking problem, otherwise only when the small ones add up.
+ */
+function needsRepair(script: LessonScript, check: ScriptCheck): boolean {
+  if (check.blocking.length > 0) return true;
+  const actions = script.steps.reduce(
+    (sum, step) => sum + step.actions.length,
+    0,
+  );
+  const tolerated = Math.max(
+    TOLERATED_MINOR,
+    Math.floor(actions * TOLERATED_MINOR_SHARE),
+  );
+  return check.errors.length > tolerated;
+}
 
 function causeOf(error: NoObjectGeneratedError): string {
   const cause = error.cause instanceof Error ? error.cause.message : "";

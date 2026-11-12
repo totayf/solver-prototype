@@ -1,5 +1,4 @@
 export {
-  cropImage,
   imageSize,
   type PixelRect,
   rotateImage,

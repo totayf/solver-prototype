@@ -4,6 +4,7 @@ export {
   groundingConfig,
   LESSON_MODELS,
   type LessonModel,
+  type LessonStage,
   lessonModel,
   scriptOptions,
   solveOptions,

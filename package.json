@@ -11,7 +11,8 @@
     "apk": "cd android && EXPO_PUBLIC_API_URL=https://kovanacademy.com ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a && cp app/build/outputs/apk/release/app-release.apk ~/Desktop/solver.apk && echo 'APK: ~/Desktop/solver.apk'",
     "t": "tsc --noEmit",
     "check": "biome check .",
-    "check:fix": "biome check . --write"
+    "check:fix": "biome check . --write",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3",
@@ -60,6 +61,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
+    "@types/bun": "^1.4.4",
     "@types/node": "^26.6.5",
     "@types/react": "~19.2.10",
     "babel-preset-expo": "~57.0.0",

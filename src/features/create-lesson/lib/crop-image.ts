@@ -8,23 +8,6 @@ export async function imageSize(
   return { width: rendered.width, height: rendered.height };
 }
 
-/** Cuts `rect` (photo pixels) out of the photo; returns the new file's uri. */
-export async function cropImage(uri: string, rect: PixelRect): Promise<string> {
-  const rendered = await ImageManipulator.manipulate(uri)
-    .crop({
-      originX: Math.round(rect.x),
-      originY: Math.round(rect.y),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-    })
-    .renderAsync();
-  const saved = await rendered.saveAsync({
-    format: SaveFormat.JPEG,
-    compress: 0.95,
-  });
-  return saved.uri;
-}
-
 /** Turns the photo a quarter clockwise, for questions shot sideways. */
 export async function rotateImage(uri: string): Promise<string> {
   const rendered = await ImageManipulator.manipulate(uri)

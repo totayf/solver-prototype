@@ -12,7 +12,9 @@ word by word.
   (default, Opus fallback), Claude Opus 5.5, Claude Sonnet 5.5 (`LESSON_MODELS`, pinnable per lesson)
 - **OCR**: Google Cloud Vision `DOCUMENT_TEXT_DETECTION` (word polygons)
 - **TTS**: Gemini speech model chain on quota errors, then OpenAI `gpt-4o-mini-tts`
-  (`shared/server/tts`; `TTS_PROVIDER=openai` skips Gemini)
+  (`shared/server/tts`; `TTS_PROVIDER=openai` skips Gemini). A lesson is voiced through a
+  speech session (`createSpeechSession`): one voice per lesson (a failed clip re-voices the whole
+  lesson on the fallback), clips memoized by text, `TTS_CONCURRENCY` (default 6) at once
 - **Player**: Expo DOM component (`'use dom'`) with Video.js 10, roughjs sketches, KaTeX
 - **Lint/Format**: Biome 2 · **Package manager**: Bun · **Types**: TypeScript 6
 
@@ -61,12 +63,25 @@ there as a route).
 
 ### Lesson pipeline (`features/create-lesson/server`)
 
-`OCR → solve → lesson script (+ repair) → region boxes → TTS per step → join on one track →
-resolve actions` (`planLesson` runs everything before speech; `createLesson` the rest).
+`OCR → solve → lesson script (+ repair) → (TTS per step ‖ region boxes) → join on one track →
+resolve actions` (`planLesson` runs the model stages; `createLesson` stores and assembles).
+The photo is stored while the models run; each script draft is voiced speculatively while it
+is validated and repaired, so steps a repair leaves unchanged are already spoken.
+
+- **Jobs** (`lesson-jobs.ts`): with `Prefer: respond-async` (the app sends it) `POST /api/lessons`
+  answers `202 {id, status: "pending", stage}` at once and the app polls `GET /api/lessons/<id>`
+  (202 while running, 200 lesson, 500 error); without it the POST waits for the lesson, as
+  installed builds expect. The same photo (sha256 + pinned model) sent again while running, or
+  within 10 min after, joins that job instead of paying again.
+  In memory: one server only; behind several instances move it to Redis/DB plus a queue.
+- **Deadlines**: the student path's default chain moves to the fallback model after 240 s
+  (solve) / 150 s (script); region boxes give up after 45 s and are optional (skipped, not
+  fatal). Pinned catalog models keep the 10-minute limit.
 
 - **Solve** (`solve-question.agent.ts`): tool loop with `calculate` (sandboxed mathjs,
   `shared/server/math`) and `run_code` (QuickJS sandbox, 3 s / 32 MB, `shared/server/code`),
-  then an answer ↔ option-verdict consistency check with one retry. Successful `run_code`
+  then an answer ↔ option-verdict consistency check with one retry; a choice answer that still
+  disagrees fails with an "emin değilim" `LessonError` instead of becoming a video. Successful `run_code`
   outputs go to the script stage, which may show one real check on the board.
 - **Prompts** are XML-sectioned with short reasoned rules; the board guide sent to the teacher
   is routed by the solution's `subject` (`board/guide.ts`). The lesson marks the correct option
@@ -79,8 +94,10 @@ resolve actions` (`planLesson` runs everything before speech; `createLesson` the
 - **Script** (`lesson-script.agent.ts`): the teacher model only sees OCR word **ids**
   (`[w12]karmaşık`), never coordinates; `lib/locate.ts` turns ids into rectangles. Action timing
   comes from `at` quotes matched against word timings (`lib/find-spoken-time.ts`).
-  `lib/validate-script.ts` checks ids, quotes, the revealed answer and every figure; errors go
-  back to the model for up to 2 repair rounds.
+  `lib/validate-script.ts` checks ids, quotes, the revealed answer and every figure. A repair
+  round (up to 2) runs only for a blocking error (revealed answer, broken figure) or more minor
+  problems than `max(2, 15% of actions)`; fewer minor ones degrade gracefully (the action is
+  skipped while resolving), since each round costs a full script generation.
 - **Regions**: parts of a photo's drawing with no OCR word are described in English and located
   by Gemini `box_2d` (`locate-regions.agent.ts`).
 - **Pen colors**: red by default; blue/green/purple/orange only to match or tell items apart.
@@ -88,8 +105,10 @@ resolve actions` (`planLesson` runs everything before speech; `createLesson` the
 - **Temporary drawings**: every drawing action has `temporary`; true makes it fade when its
   step's narration ends (`endMs`), so only what the student still needs stays on screen.
 
-No caching: every photo is generated fresh. A lesson's photo, narration track and JSON are
-stored in `.data/lessons/<id>/` (`lesson-store.ts`); clearing the history in the app deletes them.
+No result cache: every photo is generated fresh (only in-flight / just-finished jobs are joined,
+see Jobs). Anthropic calls use prompt caching on the request prefix. A lesson's photo, narration
+track and JSON are stored in `.data/lessons/<id>/` (`lesson-store.ts`, atomic writes;
+`lesson.json` is written last); clearing the history in the app deletes them.
 
 ### Board figures (`features/create-lesson/server/board`)
 
@@ -151,5 +170,6 @@ bun apk                                     # release APK against kovanacademy.c
                                             #   (after app.json / native changes: bunx expo prebuild -p android --clean)
 bun t                                       # typecheck
 bun check / bun check:fix                   # Biome
+bun run test                                # sanity tests (tests/, bun:test)
 node --env-file=.env.local scripts/ocr.mjs scripts/questions/sets.png   # OCR comparison
 ```

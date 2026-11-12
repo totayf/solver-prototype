@@ -18,6 +18,8 @@ export const env = createEnv({
     // ── TTS ─────────────────────────────────────────────────────────────────
     /** "openai" skips Gemini (e.g. when its daily quotas are used up). */
     TTS_PROVIDER: z.enum(["gemini", "openai"]).optional(),
+    /** Narration steps voiced at once (default 6); lower it on a tight speech quota. */
+    TTS_CONCURRENCY: z.coerce.number().int().min(1).max(32).optional(),
     ELEVENLABS_API_KEY: z.string().min(1).optional(),
     ALANIA_API_KEY: z.string().min(1).optional(),
   },

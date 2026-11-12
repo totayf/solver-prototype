@@ -10,6 +10,11 @@ import { containsQuote } from "./find-spoken-time";
  * exist, `at` quotes are really spoken in their step, the revealed option is
  * the solved answer, and every board figure renders. The error list goes back
  * to the model verbatim in the repair loop, so messages say how to fix.
+ *
+ * `blocking` is the subset the resolver can't degrade gracefully (a wrong or
+ * missing answer reveal, a board figure that won't render). The rest only
+ * costs one pen mark each: an unknown id drops that mark, a missing quote
+ * moves it to the step start, a missing anchor moves a note to the board.
  */
 export function validateScript({
   script,
@@ -22,6 +27,7 @@ export function validateScript({
 }) {
   const ids = new Set(ocr.words.map((word) => word.id));
   const errors: string[] = [];
+  const blocking: string[] = [];
   const draws: DrawRequest[] = [];
   const reveals: (string | null)[] = [];
 
@@ -60,9 +66,9 @@ export function validateScript({
 
   const expected = solution.format === "choice" ? solution.answer : null;
   if (reveals.length !== 1) {
-    errors.push(`use reveal_answer exactly once (found ${reveals.length})`);
+    blocking.push(`use reveal_answer exactly once (found ${reveals.length})`);
   } else if (reveals[0] !== expected) {
-    errors.push(
+    blocking.push(
       expected
         ? `reveal_answer shows ${reveals[0]} but the verified answer is ${expected}`
         : `this ${solution.format} question has no options: reveal_answer needs option null`,
@@ -70,8 +76,9 @@ export function validateScript({
   }
 
   const figures = renderFigures(draws);
-  errors.push(...figures.errors);
-  return { errors, figures };
+  blocking.push(...figures.errors);
+  errors.push(...blocking);
+  return { errors, blocking, figures };
 }
 
 export type ScriptCheck = ReturnType<typeof validateScript>;

@@ -1,19 +1,32 @@
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
+import type { PixelRect } from "./crop-image";
+
 /**
- * Bakes in the photo's rotation and shrinks it to a size that keeps text
- * sharp for OCR without uploading megabytes. Returns base64 JPEG.
+ * Cuts the question out of the photo (when a crop is given), bakes in its
+ * rotation and shrinks it to a size that keeps text sharp for OCR without
+ * uploading megabytes, in one decode and one encode. Returns base64 JPEG.
  */
-export async function prepareImage(uri: string): Promise<string> {
-  const original = await ImageManipulator.manipulate(uri).renderAsync();
-  const longEdge = Math.max(original.width, original.height);
+export async function prepareImage(
+  uri: string,
+  crop?: PixelRect,
+): Promise<string> {
+  const size = crop ?? (await ImageManipulator.manipulate(uri).renderAsync());
+  const width = Math.round(size.width);
+  const height = Math.round(size.height);
 
   const context = ImageManipulator.manipulate(uri);
-  if (longEdge > MAX_EDGE) {
+  if (crop) {
+    context.crop({
+      originX: Math.round(crop.x),
+      originY: Math.round(crop.y),
+      width,
+      height,
+    });
+  }
+  if (Math.max(width, height) > MAX_EDGE) {
     context.resize(
-      original.width >= original.height
-        ? { width: MAX_EDGE }
-        : { height: MAX_EDGE },
+      width >= height ? { width: MAX_EDGE } : { height: MAX_EDGE },
     );
   }
   const rendered = await context.renderAsync();

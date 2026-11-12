@@ -4,13 +4,16 @@ import { registry } from "./registry";
 
 /**
  * One model that tries each registry id in order and moves to the next when a
- * call throws (rate limit, outage, missing access) or hangs past
- * ATTEMPT_TIMEOUT_MS. Streaming can only fall back while the stream is being
- * opened, not after tokens started flowing.
+ * call throws (rate limit, outage, missing access) or hangs past the attempt
+ * deadline. Streaming can only fall back while the stream is being opened,
+ * not after tokens started flowing.
  *
- * @example withFallback("anthropic:claude-opus-5-5", "openai:gpt-6.1-sol")
+ * @example withFallback(["anthropic:claude-opus-5-5", "openai:gpt-6.1-sol"], { attemptTimeoutMs: 120_000 })
  */
-export function withFallback(...ids: [ModelId, ...ModelId[]]): LanguageModelV3 {
+export function withFallback(
+  ids: readonly [ModelId, ...ModelId[]],
+  { attemptTimeoutMs = ATTEMPT_TIMEOUT_MS }: { attemptTimeoutMs?: number } = {},
+): LanguageModelV3 {
   const models = ids.map((id) => registry.languageModel(id));
   const [primary] = models;
 
@@ -23,7 +26,7 @@ export function withFallback(...ids: [ModelId, ...ModelId[]]): LanguageModelV3 {
       tryInOrder(models, options.abortSignal, (m) =>
         m.doGenerate({
           ...options,
-          abortSignal: withDeadline(options.abortSignal),
+          abortSignal: withDeadline(options.abortSignal, attemptTimeoutMs),
         }),
       ),
     doStream: (options) =>
@@ -72,8 +75,11 @@ async function tryInOrder<T>(
  * block the chain, so every attempt gets its own deadline on top of the
  * caller's signal.
  */
-function withDeadline(signal: AbortSignal | undefined): AbortSignal {
-  const deadline = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
+function withDeadline(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+): AbortSignal {
+  const deadline = AbortSignal.timeout(timeoutMs);
   return signal ? AbortSignal.any([signal, deadline]) : deadline;
 }
 
@@ -84,7 +90,11 @@ function isConnectionError(error: unknown): boolean {
 
 const NETWORK_RETRY_DELAYS_MS = [2_000, 5_000, 10_000];
 
-/** Generous: a high-effort solve with tool calls finishes well within it. */
+/**
+ * Default per-attempt deadline. Generous: a high-effort olympiad solve with
+ * tool calls finishes well within it. Calls a student is waiting on pass a
+ * shorter one (models.ts) so a hung provider hands over to the next sooner.
+ */
 const ATTEMPT_TIMEOUT_MS = 600_000;
 
 function describe(error: unknown): string {

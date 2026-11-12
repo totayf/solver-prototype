@@ -5,7 +5,7 @@ import "@videojs/react/video/skin.css";
 import { Gesture } from "@videojs/react";
 import { Video, VideoPlayer, VideoSkin } from "@videojs/react/video";
 import type { DOMProps } from "expo/dom";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Lesson } from "@/entities/lesson";
 
@@ -33,7 +33,9 @@ export default function LessonPlayerDom({
   useMediaClock(mediaRef, setTimeMs);
   const autoplay = useAutoplay(mediaRef);
 
-  const scene = sceneAt(flattenActions(lesson), timeMs);
+  // Per lesson, not per frame: the clock re-renders this ~60 times a second.
+  const actions = useMemo(() => flattenActions(lesson), [lesson]);
+  const scene = sceneAt(actions, timeMs);
 
   return (
     <VideoPlayer>

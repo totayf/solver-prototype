@@ -17,6 +17,7 @@ import {
 } from "@/shared/server/ai";
 import type { OcrResult } from "@/shared/server/ocr";
 
+import { LessonError } from "../lesson-error";
 import { formatOcrLines } from "../lib/format-ocr-lines";
 import { type Solution, solutionSchema } from "./solution.schema";
 
@@ -52,7 +53,9 @@ export interface CodeCheck {
 /**
  * Solves the question with a calculator and a code sandbox, then checks that
  * the answer and the per-option verdicts agree; on a mismatch the model gets
- * one retry with the problem spelled out. Also returns the successful
+ * one retry with the problem spelled out; a choice question that still
+ * disagrees after it fails with "emin değilim" instead of becoming a video.
+ * Also returns the successful
  * run_code checks, so the teacher can show a real one (never a made-up one).
  */
 export async function solveQuestion({
@@ -100,7 +103,12 @@ export async function solveQuestion({
 
     const solution = result.output;
     const problem = inconsistency(solution);
-    if (!problem || attempt === 1) return { solution, checks };
+    if (!problem) return { solution, checks };
+    if (attempt === 1) {
+      // Still contradicting itself after the retry: no video beats a confident wrong one.
+      if (solution.format === "choice") throw new LessonError(UNSURE_MESSAGE);
+      return { solution, checks };
+    }
     messages.push(...result.response.messages, {
       role: "user",
       content: `${problem} Re-check the question and return the corrected solution.`,
@@ -160,3 +168,5 @@ export function inconsistency(solution: Solution): string | null {
 }
 
 const MAX_STEPS = 30;
+const UNSURE_MESSAGE =
+  "Bu soruda emin olamadım, hatalı bir video izletmek istemem.";

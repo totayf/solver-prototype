@@ -9,10 +9,10 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import type { GenerationStage } from "@/entities/lesson";
 import {
   CropFrame,
   type CropFrameHandle,
-  cropImage,
   GeneratingView,
   imageSize,
   rotateImage,
@@ -28,7 +28,10 @@ export default function CropPage() {
     null,
   );
   const frame = useRef<CropFrameHandle>(null);
-  const createLesson = useCreateLesson();
+  const [stage, setStage] = useState<GenerationStage | null>(null);
+  const createLesson = useCreateLesson({ onStage: setStage });
+  // Set synchronously on the first tap, so a double tap can't pay for two lessons.
+  const started = useRef(false);
 
   useEffect(() => {
     setSize(null);
@@ -36,13 +39,18 @@ export default function CropPage() {
   }, [uri]);
 
   const solve = async () => {
-    if (!frame.current) return;
+    if (!frame.current || started.current) return;
+    started.current = true;
+    setStage(null);
     try {
-      const cropped = await cropImage(uri, frame.current.crop());
-      const lesson = await createLesson.mutateAsync(cropped);
+      const lesson = await createLesson.mutateAsync({
+        uri,
+        crop: frame.current.crop(),
+      });
       router.replace({ pathname: "/lesson/[id]", params: { id: lesson.id } });
     } catch {
       // The mutation keeps the error; it's shown below.
+      started.current = false;
     }
   };
 
@@ -58,7 +66,7 @@ export default function CropPage() {
             <Button label="Tekrar dene" onPress={() => createLesson.reset()} />
           </View>
         ) : (
-          <GeneratingView />
+          <GeneratingView stage={stage ?? undefined} />
         )}
       </Screen>
     );

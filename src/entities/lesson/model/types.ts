@@ -155,6 +155,16 @@ export type NoteSide =
   | "bottom-left"
   | "bottom-right";
 
+/** Where a lesson being generated is; the server reports it while the app waits. */
+export type GenerationStage = "reading" | "solving" | "writing" | "voicing";
+
+/** What the lesson endpoints answer (HTTP 202) while generation is still running. */
+export interface PendingLesson {
+  id: string;
+  status: "pending";
+  stage: GenerationStage;
+}
+
 /** What a list row needs to show a lesson. */
 export interface LessonSummary {
   id: string;
