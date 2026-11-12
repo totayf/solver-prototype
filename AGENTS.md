@@ -25,9 +25,9 @@ src/
 ├── app/        # expo-router routes; each route file IS the screen (no pages layer)
 │   └── api/    # API routes — thin: parse request, call a slice's server/, respond
 ├── app-shell/  # FSD app layer: bootstrap side effects, providers, startup hook
-├── widgets/    # composite blocks (lesson-player)
-├── features/   # user actions (create-lesson: pick photo → generate)
-├── entities/   # domain data + its display UI (lesson: types, queries, history)
+├── widgets/    # composite blocks (lesson-player, lesson-history)
+├── features/   # user actions (create-lesson: pick photo → generate · delete-lesson)
+├── entities/   # domain data + its display UI (lesson: types, states, history, poller)
 └── shared/     # no domain knowledge: ui, lib, api client, server infra (ai, ocr, tts)
 ```
 
@@ -126,6 +126,21 @@ fails to render is dropped whole and its error feeds the repair loop.
 AI file naming: `<name>.agent.ts` (prompt + model call), `<name>.schema.ts` (Zod output schema).
 Prompts are English and ask for Turkish output; schema `.describe()` texts are part of the prompt.
 
+### App side of a lesson (`entities/lesson`, `features/create-lesson`)
+
+- A lesson is a `LessonState`: `pending` (202 + server stage), `ready` or `failed` (a 500
+  refusal keeps the server's Turkish sentence; 404 is `gone`). Temporary trouble (offline, 503,
+  non-JSON) is thrown and retried, never shown as a failure.
+- The id from the 202 goes into the device history at once as `pending`, with the exact JPEG
+  sent (`lesson-uploads/`), so leaving the screen or the app loses nothing. One app-wide poller
+  (`lesson-poller.ts`, started in `app-shell/providers.tsx`) resumes every pending lesson on app
+  start and on return to the foreground (1.5 s for 30 s, then 3 s; one last poll at 8 min).
+- "Tekrar dene" always re-sends the same bytes, so the server joins the job instead of paying
+  twice. `/lesson/[id]` shows the waiting view, the player or the failure for that id.
+- Errors reach the screen only through `shared/api/friendly-error.ts` (Turkish, "sen" form);
+  never render `error.message`.
+- Media URLs may be short-lived signed links: never persist them; refetch the lesson.
+
 ### Player (`widgets/lesson-player`)
 
 - `ui/lesson-player.dom.tsx` is the only `'use dom'` file; everything it imports runs in a
@@ -139,6 +154,10 @@ Prompts are English and ask for Turkish output; schema `.describe()` texts are p
 - One pen font everywhere the pen writes (`--hand` in `ui/player-styles.ts`, Shantell Sans):
   math is written as Unicode (x², √3, ≤); KaTeX only lays out real fractions/roots, with its
   letters and digits switched to the same font.
+- Fonts are bundled (`ui/player-fonts.ts`, no CDN at runtime); KaTeX's layout CSS is generated
+  from the package without @font-face (`bun scripts/build-katex-css.ts` after a katex upgrade).
+- Per frame only what moves re-renders: finished drawings sit in a memoized layer, and the
+  clock skips frames where `lib/timeline.ts#needsFrame` says nothing visible changes.
 
 ## Conventions
 
@@ -171,5 +190,6 @@ bun apk                                     # release APK against kovanacademy.c
 bun t                                       # typecheck
 bun check / bun check:fix                   # Biome
 bun run test                                # sanity tests (tests/, bun:test)
+bun scripts/build-katex-css.ts              # regenerate the player's KaTeX CSS (after a katex upgrade)
 node --env-file=.env.local scripts/ocr.mjs scripts/questions/sets.png   # OCR comparison
 ```
