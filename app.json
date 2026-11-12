@@ -41,7 +41,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Galerinden soru fotoğrafı seçebilmen için Solver'ın fotoğraflarına erişmesi gerekiyor.",
-          "cameraPermission": "Sorunun fotoğrafını çekebilmen için Solver'ın kameraya erişmesi gerekiyor."
+          "cameraPermission": "Sorunun fotoğrafını çekebilmen için Solver'ın kameraya erişmesi gerekiyor.",
+          "microphonePermission": false
         }
       ],
       "expo-status-bar",
