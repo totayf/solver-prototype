@@ -28,12 +28,3 @@ export function useRetryLesson() {
     },
   });
 }
-
-/** Whether a history entry can be sent again. */
-export function canRetry(entry: LessonHistoryEntry): boolean {
-  return (
-    entry.status === "failed" &&
-    entry.error.kind !== "gone" &&
-    Boolean(entry.uploadUri)
-  );
-}

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { isTransientError } from "@/shared/api/friendly-error";
 
@@ -43,6 +43,17 @@ export function useLesson(id: string) {
   useEffect(() => {
     if (pending) lessonPoller.watch({ id, createdAt: createdAt ?? Date.now() });
   }, [pending, id, createdAt]);
+
+  // A lesson in the history keeps polling after this screen closes (it waits
+  // there); any other one stops with the screen.
+  const inHistory = useRef(false);
+  inHistory.current = entry !== undefined;
+  useEffect(
+    () => () => {
+      if (!inHistory.current) lessonPoller.unwatch(id);
+    },
+    [id],
+  );
 
   return {
     state,
