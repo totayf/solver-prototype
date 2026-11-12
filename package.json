@@ -20,6 +20,7 @@
     "@ai-sdk/openai": "^3.0.126",
     "@ai-sdk/provider": "^3",
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/shantell-sans": "^0.4.1",
     "@hugeicons/core-free-icons": "^4.2.0",
     "@hugeicons/react-native": "^1.0.13",
     "@t3-oss/env-core": "^0.13.11",
