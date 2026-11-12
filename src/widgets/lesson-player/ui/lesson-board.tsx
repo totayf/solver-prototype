@@ -6,7 +6,8 @@ import { inkPlan, inkProgress, penTip } from "../lib/ink";
 import { inkHex } from "../lib/ink-colors";
 import { mathTextToHtml } from "../lib/math-text";
 import { fadeOf, type Scene, type TimedAction } from "../lib/timeline";
-import { InkStrokes, Pen } from "./ink-strokes";
+import { InkStrokes, PenTip, SettledInk, splitSettled } from "./ink-strokes";
+import { useElementSize } from "./use-element-size";
 
 /**
  * Side board: working lines and figures stacked in the order the teacher
@@ -14,7 +15,12 @@ import { InkStrokes, Pen } from "./ink-strokes";
  * Opens (half the screen) only once something is written on it and follows
  * the latest item.
  */
-export function LessonBoard({ lesson, scene, timeMs }: LessonBoardProps) {
+export function LessonBoard({
+  lesson,
+  scene,
+  timeMs,
+  reduceMotion,
+}: LessonBoardProps) {
   const blocks = boardBlocks(scene, lesson.figures ?? []);
   const latest =
     scene.latest && isBoardItem(scene.latest) ? scene.latest : null;
@@ -23,7 +29,10 @@ export function LessonBoard({ lesson, scene, timeMs }: LessonBoardProps) {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when the active block changes or grows
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    activeRef.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+    });
   }, [activeBlock, blocks.length]);
 
   return (
@@ -39,9 +48,10 @@ export function LessonBoard({ lesson, scene, timeMs }: LessonBoardProps) {
             className="board-block"
           >
             {block.kind === "note" ? (
-              <Note item={block.item} timeMs={timeMs} />
+              <Note lessonId={lesson.id} item={block.item} timeMs={timeMs} />
             ) : (
               <Figure
+                lessonId={lesson.id}
                 layout={block.layout}
                 items={block.items}
                 latest={latest}
@@ -57,16 +67,28 @@ export function LessonBoard({ lesson, scene, timeMs }: LessonBoardProps) {
 
 // ── Components ───────────────────────────────────────────────────────────────
 
-function Note({ item, timeMs }: { item: TimedAction; timeMs: number }) {
+function Note({
+  lessonId,
+  item,
+  timeMs,
+}: {
+  lessonId: string;
+  item: TimedAction;
+  timeMs: number;
+}) {
   if (item.action.type !== "write") return null;
-  const progress = inkProgress(inkPlan(item.key, item.action), timeMs);
+  const progress = inkProgress(
+    inkPlan(lessonId, item.key, item.action),
+    timeMs,
+  );
   return (
     <p
       className="board-line handwriting"
       style={{
         color: inkHex(item.action.color),
         opacity: fadeOf(item.action, timeMs),
-        clipPath: `inset(0 ${(1 - progress) * 100}% 0 0)`,
+        clipPath:
+          progress < 1 ? `inset(0 ${(1 - progress) * 100}% 0 0)` : undefined,
       }}
       dangerouslySetInnerHTML={{ __html: mathTextToHtml(item.action.text) }}
     />
@@ -74,37 +96,52 @@ function Note({ item, timeMs }: { item: TimedAction; timeMs: number }) {
 }
 
 function Figure({
+  lessonId,
   layout,
   items,
   latest,
   timeMs,
 }: {
+  lessonId: string;
   layout: FigureLayout;
   items: TimedAction[];
   latest: TimedAction | null;
   timeMs: number;
 }) {
+  const [boxRef, box] = useElementSize<HTMLDivElement>();
   const drawing = latest && items.includes(latest) ? latest : null;
   const pen = drawing
-    ? penTip(inkPlan(drawing.key, drawing.action), null, null, timeMs)
+    ? penTip(inkPlan(lessonId, drawing.key, drawing.action), null, null, timeMs)
     : null;
+  const { settled, live } = splitSettled(lessonId, items, timeMs);
+  // Figure units (1000 = board width) → CSS pixels.
+  const scale = box ? box.width / FIGURE_WIDTH : 0;
 
   return (
-    <svg
-      className="board-figure"
-      viewBox={`0 0 1000 ${layout.height}`}
-      aria-hidden
-    >
-      {items.map((item) => (
-        <InkStrokes
-          key={item.key}
-          plan={inkPlan(item.key, item.action)}
-          timeMs={timeMs}
-          opacity={fadeOf(item.action, timeMs)}
+    <div ref={boxRef} className="board-figure-box">
+      <svg
+        className="board-figure"
+        viewBox={`0 0 ${FIGURE_WIDTH} ${layout.height}`}
+        aria-hidden
+      >
+        <SettledInk
+          lessonId={lessonId}
+          items={settled}
+          signature={settled.map((item) => item.key).join(",")}
         />
-      ))}
-      {pen && <Pen point={pen} size={64} />}
-    </svg>
+        {live.map((item) => (
+          <InkStrokes
+            key={item.key}
+            plan={inkPlan(lessonId, item.key, item.action)}
+            timeMs={timeMs}
+            opacity={fadeOf(item.action, timeMs)}
+          />
+        ))}
+      </svg>
+      {pen && scale > 0 && (
+        <PenTip point={pen} scale={scale} size={PEN_SIZE * scale} />
+      )}
+    </div>
   );
 }
 
@@ -154,12 +191,19 @@ function blockKeyOf(item: TimedAction): string {
     : item.key;
 }
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const FIGURE_WIDTH = 1000;
+/** Pen size in figure units. */
+const PEN_SIZE = 64;
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface LessonBoardProps {
   lesson: Lesson;
   scene: Scene;
   timeMs: number;
+  reduceMotion?: boolean;
 }
 
 interface FigureBlock {

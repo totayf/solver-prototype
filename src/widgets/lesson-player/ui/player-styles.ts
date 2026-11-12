@@ -50,7 +50,9 @@ body {
 path.marker { stroke: var(--marker); opacity: .55; stroke-linecap: butt; }
 path.ink { stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
 .figure-text { font-family: var(--hand); font-weight: 600; }
-.pen { filter: drop-shadow(0 2px 3px rgba(0,0,0,.25)); }
+/* The pen tip moves by transform only (its shadow is drawn in), so a frame never repaints a filter. */
+.pen-tip { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; will-change: transform; }
+.pen-tip svg { display: block; }
 
 .handwriting { font-family: var(--hand); font-weight: 600; color: var(--ink); }
 /* KaTeX keeps its layout (fraction bars, roots) but writes letters and digits in the same hand. */
@@ -77,6 +79,7 @@ path.ink { stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
 .board-inner { height: 100%; min-width: 260px; overflow-y: auto; padding: 56px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
 .board-block { flex-shrink: 0; scroll-margin: 56px 0 24px; }
 .board-line { margin: 0; font-size: 21px; line-height: 1.3; }
+.board-figure-box { position: relative; }
 .board-figure { display: block; width: 100%; height: auto; overflow: visible; }
 
 /* ── Top bar (shows and hides with the skin's controls) ─────────────────── */
