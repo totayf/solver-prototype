@@ -45,13 +45,20 @@ await mapLimit(lessonIds, 3, async (id) => {
     readFile(path.join(dir, "image")),
     readFile(path.join(dir, "image.json"), "utf8"),
   ]);
-  await send("POST", "/api/dev-solver/import", {
-    lesson: JSON.parse(lesson),
-    audio: audio.toString("base64"),
-    image: image.toString("base64"),
-    mediaType: (JSON.parse(meta) as { mediaType: string }).mediaType,
-  });
-  console.log(`lesson ${++done}/${lessonIds.length} ${id}`);
+  const status = await send(
+    "POST",
+    "/api/dev-solver/import",
+    {
+      lesson: JSON.parse(lesson),
+      audio: audio.toString("base64"),
+      image: image.toString("base64"),
+      mediaType: (JSON.parse(meta) as { mediaType: string }).mediaType,
+    },
+    // The server refuses to overwrite a lesson: one uploaded by an earlier run is kept.
+    [409],
+  );
+  const note = status === 409 ? " (already uploaded)" : "";
+  console.log(`lesson ${++done}/${lessonIds.length} ${id}${note}`);
 });
 
 const questions = [];
@@ -65,7 +72,13 @@ console.log(`catalog: ${questions.length} questions uploaded`);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function send(method: string, route: string, body: unknown) {
+/** Sends one admin write; returns the status, throwing unless it is 2xx or `allowed`. */
+async function send(
+  method: string,
+  route: string,
+  body: unknown,
+  allowed: number[] = [],
+): Promise<number> {
   const isBytes = body instanceof Uint8Array;
   const res = await fetch(origin + route, {
     method,
@@ -76,9 +89,10 @@ async function send(method: string, route: string, body: unknown) {
     // A Buffer is a Uint8Array; copy it into a plain ArrayBuffer-backed view for fetch.
     body: isBytes ? new Uint8Array(body) : JSON.stringify(body),
   });
-  if (!res.ok) {
+  if (!res.ok && !allowed.includes(res.status)) {
     throw new Error(`${method} ${route}: ${res.status} ${await res.text()}`);
   }
+  return res.status;
 }
 
 /** Tags come from the default (Argon) lesson, else any lesson. */
