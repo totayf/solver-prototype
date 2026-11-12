@@ -7,10 +7,12 @@ import { Redirect, router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
-import { LessonHistoryList } from "@/entities/lesson";
 import { pickQuestionImage } from "@/features/create-lesson";
+import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
+import { useNavigationLock } from "@/shared/lib/use-navigation-lock";
 import { Button, Icon, Screen, Text } from "@/shared/ui";
+import { LessonHistory } from "@/widgets/lesson-history";
 
 // Photo solving is switched off for the shared build (examples only).
 const SOLVING_ENABLED = false;
@@ -21,14 +23,31 @@ export default function HomePage() {
 
 function SolveHome() {
   const [error, setError] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const navigate = useNavigationLock();
 
   const start = async (source: "camera" | "library") => {
+    if (picking) return;
     setError(null);
+    setPicking(true);
     try {
-      const uri = await pickQuestionImage(source);
-      if (uri) router.push({ pathname: "/crop", params: { uri } });
+      const image = await pickQuestionImage(source);
+      if (image) {
+        navigate(() =>
+          router.push({
+            pathname: "/crop",
+            params: {
+              uri: image.uri,
+              width: String(image.width),
+              height: String(image.height),
+            },
+          }),
+        );
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e).message);
+    } finally {
+      setPicking(false);
     }
   };
 
@@ -57,12 +76,14 @@ function SolveHome() {
           <Button
             label="Fotoğraf çek"
             icon={Camera01Icon}
+            disabled={picking}
             onPress={() => void start("camera")}
           />
           <Button
             label="Galeriden seç"
             icon={Image02Icon}
             variant="secondary"
+            disabled={picking}
             onPress={() => void start("library")}
           />
           {error && (
@@ -75,9 +96,11 @@ function SolveHome() {
           )}
         </View>
 
-        <LessonHistoryList
+        <LessonHistory
           onOpen={(id) =>
-            router.push({ pathname: "/lesson/[id]", params: { id } })
+            navigate(() =>
+              router.push({ pathname: "/lesson/[id]", params: { id } }),
+            )
           }
         />
       </ScrollView>

@@ -1,92 +1,103 @@
-import {
-  Alert02Icon,
-  RotateClockwiseIcon,
-  Tick02Icon,
-} from "@hugeicons/core-free-icons";
+import { RotateClockwiseIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { useRef, useState } from "react";
+import { Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { GenerationStage } from "@/entities/lesson";
 import {
   CropFrame,
   type CropFrameHandle,
   GeneratingView,
-  imageSize,
+  type QuestionImage,
   rotateImage,
-  useCreateLesson,
+  useSolveQuestion,
 } from "@/features/create-lesson";
+import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
-import { Button, Icon, PressableScale, Screen, Text } from "@/shared/ui";
+import { Icon, PressableScale, ProblemView, Screen, Text } from "@/shared/ui";
 
 export default function CropPage() {
-  const params = useLocalSearchParams<{ uri: string }>();
-  const [uri, setUri] = useState(params.uri);
-  const [size, setSize] = useState<{ width: number; height: number } | null>(
-    null,
-  );
+  const params = useLocalSearchParams<{
+    uri: string;
+    width: string;
+    height: string;
+  }>();
+  const [image, setImage] = useState<QuestionImage>(() => ({
+    uri: params.uri,
+    width: Number(params.width) || 0,
+    height: Number(params.height) || 0,
+  }));
+  const [rotating, setRotating] = useState(false);
+  const [rotateError, setRotateError] = useState<string | null>(null);
   const frame = useRef<CropFrameHandle>(null);
-  const [stage, setStage] = useState<GenerationStage | null>(null);
-  const createLesson = useCreateLesson({ onStage: setStage });
-  // Set synchronously on the first tap, so a double tap can't pay for two lessons.
-  const started = useRef(false);
+  const solve = useSolveQuestion({
+    onStarted: (id) =>
+      router.replace({ pathname: "/lesson/[id]", params: { id } }),
+  });
 
-  useEffect(() => {
-    setSize(null);
-    void imageSize(uri).then(setSize);
-  }, [uri]);
-
-  const solve = async () => {
-    if (!frame.current || started.current) return;
-    started.current = true;
-    setStage(null);
+  const rotate = async () => {
+    if (rotating) return;
+    setRotating(true);
+    setRotateError(null);
     try {
-      const lesson = await createLesson.mutateAsync({
-        uri,
-        crop: frame.current.crop(),
-      });
-      router.replace({ pathname: "/lesson/[id]", params: { id: lesson.id } });
-    } catch {
-      // The mutation keeps the error; it's shown below.
-      started.current = false;
+      setImage(await rotateImage(image));
+      solve.resetCrop();
+    } catch (e) {
+      setRotateError(friendlyError(e).message);
+    } finally {
+      setRotating(false);
     }
   };
 
-  if (createLesson.isPending || createLesson.error) {
+  if (solve.phase === "sending") {
     return (
       <Screen>
-        {createLesson.error ? (
-          <View className="flex-1 items-center justify-center gap-4">
-            <Icon icon={Alert02Icon} size={28} color={APP.destructive} />
-            <Text variant="body" className="text-center">
-              {createLesson.error.message}
-            </Text>
-            <Button label="Tekrar dene" onPress={() => createLesson.reset()} />
-          </View>
-        ) : (
-          <GeneratingView stage={stage ?? undefined} />
-        )}
+        <GeneratingView stage="uploading" />
+      </Screen>
+    );
+  }
+  if (solve.phase === "failed" && solve.error) {
+    return (
+      <Screen>
+        <ProblemView
+          message={solve.error.message}
+          actions={[
+            { label: "Tekrar dene", onPress: () => solve.retry(image) },
+            { label: "Kırpmayı düzenle", onPress: solve.editCrop },
+          ]}
+        />
       </Screen>
     );
   }
 
+  const ready = image.width > 0 && image.height > 0;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
       <StatusBar style="light" />
       <Text variant="label" className="mt-2 text-center text-white">
-        Sadece tek soruyu çerçevele
+        {rotateError ?? "Sadece tek soruyu çerçevele"}
       </Text>
-      {size ? (
-        <CropFrame ref={frame} uri={uri} imageSize={size} />
+      {ready ? (
+        <CropFrame
+          ref={frame}
+          uri={image.uri}
+          imageSize={image}
+          initialCrop={solve.crop}
+        />
       ) : (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#FFFFFF" />
+        <View className="flex-1 items-center justify-center px-8">
+          <Text variant="body" className="text-center text-white">
+            Fotoğraf hazırlanamadı, geri dönüp tekrar dene.
+          </Text>
         </View>
       )}
       <View className="flex-row items-center justify-between px-6 pb-2 pt-3">
-        <Pressable hitSlop={12} onPress={() => router.back()}>
+        <Pressable
+          hitSlop={12}
+          accessibilityRole="button"
+          onPress={() => router.back()}
+        >
           <Text variant="label" className="text-white">
             Vazgeç
           </Text>
@@ -94,15 +105,20 @@ export default function CropPage() {
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel="Çöz"
-          onPress={() => void solve()}
+          disabled={!ready || rotating}
+          onPress={() =>
+            frame.current && solve.solve(image, frame.current.crop())
+          }
           className="h-16 w-16 items-center justify-center rounded-pill bg-white"
         >
           <Icon icon={Tick02Icon} size={28} color={APP.foreground} />
         </PressableScale>
         <Pressable
           hitSlop={12}
+          accessibilityRole="button"
           accessibilityLabel="Döndür"
-          onPress={() => void rotateImage(uri).then(setUri)}
+          disabled={!ready || rotating}
+          onPress={() => void rotate()}
         >
           <Icon icon={RotateClockwiseIcon} size={26} color="#FFFFFF" />
         </Pressable>
