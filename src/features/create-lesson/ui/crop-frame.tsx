@@ -6,7 +6,7 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 
-import type { PixelRect } from "../lib/crop-image";
+import type { PixelRect } from "../lib/crop-rect";
 
 // Grab modes and sizes. Declared before the worklets below: a worklet captures
 // the values of outer constants when it is created, so they must exist by then.
@@ -23,9 +23,15 @@ const PAD = 20;
 /**
  * The photo with a free crop frame: drag a corner or an edge to resize, drag
  * inside to move. Outside the frame is dimmed. The parent reads the result in
- * photo pixels through `ref.crop()`.
+ * photo pixels through `ref.crop()`. `initialCrop` reopens the frame where
+ * the student left it (after a failed send).
  */
-export function CropFrame({ uri, imageSize, ref }: CropFrameProps) {
+export function CropFrame({
+  uri,
+  imageSize,
+  initialCrop,
+  ref,
+}: CropFrameProps) {
   const [box, setBox] = useState<LayoutRectangle | null>(null);
   const fit = box ? fitContain(imageSize, box) : null;
 
@@ -37,17 +43,25 @@ export function CropFrame({ uri, imageSize, ref }: CropFrameProps) {
   const mode = useSharedValue(0);
   const start = useSharedValue({ x: 0, y: 0, w: 0, h: 0 });
 
-  // A new photo (or a rotation) starts with a frame just inside its edges.
+  // A new photo (or a rotation) starts with a frame just inside its edges,
+  // or with the student's own crop when there is one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the fitted photo changes
   useEffect(() => {
     if (!fit) return;
-    const inset = Math.min(fit.width, fit.height) * 0.05;
     bounds.value = {
       left: fit.left,
       top: fit.top,
       right: fit.left + fit.width,
       bottom: fit.top + fit.height,
     };
+    if (initialCrop) {
+      x.value = fit.left + initialCrop.x * fit.scale;
+      y.value = fit.top + initialCrop.y * fit.scale;
+      w.value = Math.max(MIN_SIZE, initialCrop.width * fit.scale);
+      h.value = Math.max(MIN_SIZE, initialCrop.height * fit.scale);
+      return;
+    }
+    const inset = Math.min(fit.width, fit.height) * 0.05;
     x.value = fit.left + inset;
     y.value = fit.top + inset;
     w.value = fit.width - inset * 2;
@@ -284,5 +298,7 @@ export interface CropFrameHandle {
 interface CropFrameProps {
   uri: string;
   imageSize: { width: number; height: number };
+  /** Photo pixels; the frame starts here instead of the default inset. */
+  initialCrop?: PixelRect;
   ref: Ref<CropFrameHandle>;
 }

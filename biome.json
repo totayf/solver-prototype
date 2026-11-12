@@ -16,6 +16,7 @@
       "!**/expo-env.d.ts",
       "!**/node_modules/**",
       "!scripts/out/**",
+      "!**/*.generated.ts",
       "!scripts/questions/**"
     ]
   },

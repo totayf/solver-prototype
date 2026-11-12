@@ -13,7 +13,7 @@ import {
 import { requestJson } from "@/shared/api/request-json";
 
 /**
- * Generates an example's lesson with one model on demand (1–2 min). Several
+ * Generates an example's lesson with one model on demand (about two minutes). Several
  * models can run at once; `pending` lists the ones still working.
  */
 export function useGenerateExample(questionId: string) {
@@ -26,6 +26,8 @@ export function useGenerateExample(questionId: string) {
       requestJson<ExampleQuestion>(`/api/examples/${questionId}/generate`, {
         method: "POST",
         body: JSON.stringify({ model }),
+        // The server answers once the lesson is made (about two minutes).
+        timeoutMs: GENERATE_TIMEOUT_MS,
       }),
     onSuccess: (question) => {
       queryClient.setQueryData<ExampleCatalog>(EXAMPLES_QUERY_KEY, (catalog) =>
@@ -47,3 +49,7 @@ export function useGenerateExample(questionId: string) {
 
   return { generate: mutation.mutate, pending, error: mutation.error };
 }
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const GENERATE_TIMEOUT_MS = 10 * 60_000;

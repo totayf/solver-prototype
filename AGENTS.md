@@ -12,7 +12,9 @@ word by word.
   (default, Opus fallback), Claude Opus 5.5, Claude Sonnet 5.5 (`LESSON_MODELS`, pinnable per lesson)
 - **OCR**: Google Cloud Vision `DOCUMENT_TEXT_DETECTION` (word polygons)
 - **TTS**: Gemini speech model chain on quota errors, then OpenAI `gpt-4o-mini-tts`
-  (`shared/server/tts`; `TTS_PROVIDER=openai` skips Gemini)
+  (`shared/server/tts`; `TTS_PROVIDER=openai` skips Gemini). A lesson is voiced through a
+  speech session (`createSpeechSession`): one voice per lesson (a failed clip re-voices the whole
+  lesson on the fallback), clips memoized by text, `TTS_CONCURRENCY` (default 6) at once
 - **Player**: Expo DOM component (`'use dom'`) with Video.js 10, roughjs sketches, KaTeX
 - **Lint/Format**: Biome 2 · **Package manager**: Bun · **Types**: TypeScript 6
 
@@ -23,9 +25,9 @@ src/
 ├── app/        # expo-router routes; each route file IS the screen (no pages layer)
 │   └── api/    # API routes — thin: parse request, call a slice's server/, respond
 ├── app-shell/  # FSD app layer: bootstrap side effects, providers, startup hook
-├── widgets/    # composite blocks (lesson-player)
-├── features/   # user actions (create-lesson: pick photo → generate)
-├── entities/   # domain data + its display UI (lesson: types, queries, history)
+├── widgets/    # composite blocks (lesson-player, lesson-history)
+├── features/   # user actions (create-lesson: pick photo → generate · delete-lesson)
+├── entities/   # domain data + its display UI (lesson: types, states, history, poller)
 └── shared/     # no domain knowledge: ui, lib, api client, server infra (ai, ocr, tts)
 ```
 
@@ -61,12 +63,25 @@ there as a route).
 
 ### Lesson pipeline (`features/create-lesson/server`)
 
-`OCR → solve → lesson script (+ repair) → region boxes → TTS per step → join on one track →
-resolve actions` (`planLesson` runs everything before speech; `createLesson` the rest).
+`OCR → solve → lesson script (+ repair) → (TTS per step ‖ region boxes) → join on one track →
+resolve actions` (`planLesson` runs the model stages; `createLesson` stores and assembles).
+The photo is stored while the models run; each script draft is voiced speculatively while it
+is validated and repaired, so steps a repair leaves unchanged are already spoken.
+
+- **Jobs** (`lesson-jobs.ts`): with `Prefer: respond-async` (the app sends it) `POST /api/lessons`
+  answers `202 {id, status: "pending", stage}` at once and the app polls `GET /api/lessons/<id>`
+  (202 while running, 200 lesson, 500 error); without it the POST waits for the lesson, as
+  installed builds expect. The same photo (sha256 + pinned model) sent again while running, or
+  within 10 min after, joins that job instead of paying again.
+  In memory: one server only; behind several instances move it to Redis/DB plus a queue.
+- **Deadlines**: the student path's default chain moves to the fallback model after 240 s
+  (solve) / 150 s (script); region boxes give up after 45 s and are optional (skipped, not
+  fatal). Pinned catalog models keep the 10-minute limit.
 
 - **Solve** (`solve-question.agent.ts`): tool loop with `calculate` (sandboxed mathjs,
   `shared/server/math`) and `run_code` (QuickJS sandbox, 3 s / 32 MB, `shared/server/code`),
-  then an answer ↔ option-verdict consistency check with one retry. Successful `run_code`
+  then an answer ↔ option-verdict consistency check with one retry; a choice answer that still
+  disagrees fails with an "emin değilim" `LessonError` instead of becoming a video. Successful `run_code`
   outputs go to the script stage, which may show one real check on the board.
 - **Prompts** are XML-sectioned with short reasoned rules; the board guide sent to the teacher
   is routed by the solution's `subject` (`board/guide.ts`). The lesson marks the correct option
@@ -79,8 +94,10 @@ resolve actions` (`planLesson` runs everything before speech; `createLesson` the
 - **Script** (`lesson-script.agent.ts`): the teacher model only sees OCR word **ids**
   (`[w12]karmaşık`), never coordinates; `lib/locate.ts` turns ids into rectangles. Action timing
   comes from `at` quotes matched against word timings (`lib/find-spoken-time.ts`).
-  `lib/validate-script.ts` checks ids, quotes, the revealed answer and every figure; errors go
-  back to the model for up to 2 repair rounds.
+  `lib/validate-script.ts` checks ids, quotes, the revealed answer and every figure. A repair
+  round (up to 2) runs only for a blocking error (revealed answer, broken figure) or more minor
+  problems than `max(2, 15% of actions)`; fewer minor ones degrade gracefully (the action is
+  skipped while resolving), since each round costs a full script generation.
 - **Regions**: parts of a photo's drawing with no OCR word are described in English and located
   by Gemini `box_2d` (`locate-regions.agent.ts`).
 - **Pen colors**: red by default; blue/green/purple/orange only to match or tell items apart.
@@ -88,8 +105,10 @@ resolve actions` (`planLesson` runs everything before speech; `createLesson` the
 - **Temporary drawings**: every drawing action has `temporary`; true makes it fade when its
   step's narration ends (`endMs`), so only what the student still needs stays on screen.
 
-No caching: every photo is generated fresh. A lesson's photo, narration track and JSON are
-stored in `.data/lessons/<id>/` (`lesson-store.ts`); clearing the history in the app deletes them.
+No result cache: every photo is generated fresh (only in-flight / just-finished jobs are joined,
+see Jobs). Anthropic calls use prompt caching on the request prefix. A lesson's photo, narration
+track and JSON are stored in `.data/lessons/<id>/` (`lesson-store.ts`, atomic writes;
+`lesson.json` is written last); clearing the history in the app deletes them.
 
 ### Board figures (`features/create-lesson/server/board`)
 
@@ -107,6 +126,21 @@ fails to render is dropped whole and its error feeds the repair loop.
 AI file naming: `<name>.agent.ts` (prompt + model call), `<name>.schema.ts` (Zod output schema).
 Prompts are English and ask for Turkish output; schema `.describe()` texts are part of the prompt.
 
+### App side of a lesson (`entities/lesson`, `features/create-lesson`)
+
+- A lesson is a `LessonState`: `pending` (202 + server stage), `ready` or `failed` (a 500
+  refusal keeps the server's Turkish sentence; 404 is `gone`). Temporary trouble (offline, 503,
+  non-JSON) is thrown and retried, never shown as a failure.
+- The id from the 202 goes into the device history at once as `pending`, with the exact JPEG
+  sent (`lesson-uploads/`), so leaving the screen or the app loses nothing. One app-wide poller
+  (`lesson-poller.ts`, started in `app-shell/providers.tsx`) resumes every pending lesson on app
+  start and on return to the foreground (1.5 s for 30 s, then 3 s; one last poll at 8 min).
+- "Tekrar dene" always re-sends the same bytes, so the server joins the job instead of paying
+  twice. `/lesson/[id]` shows the waiting view, the player or the failure for that id.
+- Errors reach the screen only through `shared/api/friendly-error.ts` (Turkish, "sen" form);
+  never render `error.message`.
+- Media URLs may be short-lived signed links: never persist them; refetch the lesson.
+
 ### Player (`widgets/lesson-player`)
 
 - `ui/lesson-player.dom.tsx` is the only `'use dom'` file; everything it imports runs in a
@@ -120,6 +154,10 @@ Prompts are English and ask for Turkish output; schema `.describe()` texts are p
 - One pen font everywhere the pen writes (`--hand` in `ui/player-styles.ts`, Shantell Sans):
   math is written as Unicode (x², √3, ≤); KaTeX only lays out real fractions/roots, with its
   letters and digits switched to the same font.
+- Fonts are bundled (`ui/player-fonts.ts`, no CDN at runtime); KaTeX's layout CSS is generated
+  from the package without @font-face (`bun scripts/build-katex-css.ts` after a katex upgrade).
+- Per frame only what moves re-renders: finished drawings sit in a memoized layer, and the
+  clock skips frames where `lib/timeline.ts#needsFrame` says nothing visible changes.
 
 ## Conventions
 
@@ -151,5 +189,7 @@ bun apk                                     # release APK against kovanacademy.c
                                             #   (after app.json / native changes: bunx expo prebuild -p android --clean)
 bun t                                       # typecheck
 bun check / bun check:fix                   # Biome
+bun run test                                # sanity tests (tests/, bun:test)
+bun scripts/build-katex-css.ts              # regenerate the player's KaTeX CSS (after a katex upgrade)
 node --env-file=.env.local scripts/ocr.mjs scripts/questions/sets.png   # OCR comparison
 ```

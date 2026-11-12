@@ -8,3 +8,4 @@ export {
   getLessonImage,
   LessonError,
 } from "./create-lesson.service";
+export { type LessonJob, lessonJob, startLessonJob } from "./lesson-jobs";

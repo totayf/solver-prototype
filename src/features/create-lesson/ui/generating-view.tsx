@@ -1,84 +1,100 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { useEffect } from "react";
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Platform,
+  View,
+} from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
+import {
+  GENERATION_STAGES,
+  type GenerationStage,
+  stageIndex,
+  stageLabel,
+} from "@/entities/lesson";
 import { APP } from "@/shared/lib/app-tokens";
-import { Text } from "@/shared/ui";
+import { Button, Text } from "@/shared/ui";
 
 /**
- * Waiting screen while the lesson is generated. The server doesn't stream
- * progress yet, so stages advance on typical timings.
+ * Waiting screen while a lesson is made. It shows only what is really
+ * happening: the photo upload, then the stage the server reports — no
+ * timer-driven guesses. Stage changes are announced to screen readers.
+ * `onBackground` lets the student leave; the lesson keeps being made and
+ * waits in the history.
  */
-export function GeneratingView() {
-  const stage = useStage();
+export function GeneratingView({
+  stage,
+  waitingForNetwork = false,
+  onBackground,
+}: {
+  stage: GenerationStage | "uploading";
+  /** The last poll got no answer; polling continues. */
+  waitingForNetwork?: boolean;
+  onBackground?: () => void;
+}) {
+  const title =
+    stage === "uploading" ? "Fotoğraf gönderiliyor…" : `${stageLabel(stage)}…`;
+  const reached = stage === "uploading" ? -1 : stageIndex(stage);
+
+  useEffect(() => {
+    // Android reads the live region below; iOS needs an explicit announcement.
+    if (Platform.OS === "ios")
+      AccessibilityInfo.announceForAccessibility(title);
+  }, [title]);
 
   return (
-    <View className="flex-1 items-center justify-center gap-6">
+    <View className="flex-1 items-center justify-center gap-6 px-6">
       <ActivityIndicator size="large" color={APP.primary} />
-      <Animated.View
-        key={stage}
-        entering={FadeIn.duration(300)}
-        exiting={FadeOut.duration(200)}
+      <View
+        accessibilityLiveRegion="polite"
+        accessible
+        accessibilityLabel={title}
       >
-        <Text variant="heading" className="text-center">
-          {STAGES[stage].title}
-        </Text>
-        <Text variant="caption" className="mt-1 text-center">
-          {STAGES[stage].detail}
-        </Text>
-      </Animated.View>
-      <View className="flex-row gap-2">
-        {STAGES.map((item, i) => (
+        <Animated.View
+          key={title}
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(200)}
+        >
+          <Text variant="heading" className="text-center">
+            {title}
+          </Text>
+        </Animated.View>
+      </View>
+      <View
+        className="flex-row gap-2"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {GENERATION_STAGES.map((item, i) => (
           <View
-            key={item.title}
+            key={item.stage}
             className={
-              i <= stage
+              i <= reached
                 ? "h-1.5 w-8 rounded-pill bg-primary"
                 : "h-1.5 w-8 rounded-pill bg-border"
             }
           />
         ))}
       </View>
+      <Text variant="caption" className="text-center">
+        {waitingForNetwork
+          ? "Bağlantı bekleniyor… Dersin sunucuda hazırlanmaya devam ediyor."
+          : "Dersin hazırlanıyor, bu yaklaşık iki dakika sürer."}
+      </Text>
+      {onBackground && (
+        <View className="items-center gap-2 self-stretch">
+          <Button
+            label="Arkada hazırlansın"
+            variant="secondary"
+            onPress={onBackground}
+            className="self-stretch"
+          />
+          <Text variant="caption" className="text-center">
+            Hazır olunca Son sorular listesinde seni bekler.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function useStage(): number {
-  const [stage, setStage] = useState(0);
-  useEffect(() => {
-    const timers = STAGES.slice(1).map((item, i) =>
-      setTimeout(() => setStage(i + 1), item.startsAtMs),
-    );
-    return () => {
-      for (const timer of timers) clearTimeout(timer);
-    };
-  }, []);
-  return stage;
-}
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const STAGES = [
-  {
-    title: "Soruyu okuyorum…",
-    detail: "Metni ve şıkları tarıyorum",
-    startsAtMs: 0,
-  },
-  {
-    title: "Çözüyorum…",
-    detail: "Her şıkkı tek tek kontrol ediyorum",
-    startsAtMs: 4_000,
-  },
-  {
-    title: "Anlatımı hazırlıyorum…",
-    detail: "Neyin altını çizeceğime karar veriyorum",
-    startsAtMs: 22_000,
-  },
-  {
-    title: "Seslendiriyorum…",
-    detail: "Hocan birazdan hazır",
-    startsAtMs: 38_000,
-  },
-] as const;

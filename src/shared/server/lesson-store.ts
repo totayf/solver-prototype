@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -17,9 +17,16 @@ export function lessonStore(lessonId: string) {
     }
   }
 
+  /**
+   * Writes to a temporary file and renames it into place, so a reader polling
+   * for the lesson never sees half a file.
+   */
   async function writeBytes(name: string, data: Uint8Array): Promise<void> {
     await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, name), data);
+    const target = path.join(dir, name);
+    const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(temporary, data);
+    await rename(temporary, target);
   }
 
   async function readJson<T>(name: string): Promise<T | null> {
@@ -28,10 +35,8 @@ export function lessonStore(lessonId: string) {
   }
 
   async function writeJson(name: string, value: unknown): Promise<void> {
-    await writeBytes(
-      name,
-      new TextEncoder().encode(JSON.stringify(value, null, 2)),
-    );
+    // Compact: lesson.json is fetched by the app on every open.
+    await writeBytes(name, new TextEncoder().encode(JSON.stringify(value)));
   }
 
   /** Deletes the lesson's folder and everything in it. */

@@ -8,11 +8,14 @@ import {
   ExampleRow,
   useExamples,
 } from "@/entities/example";
+import { friendlyError } from "@/shared/api/friendly-error";
 import { APP } from "@/shared/lib/app-tokens";
+import { useNavigationLock } from "@/shared/lib/use-navigation-lock";
 import { Button, Screen, SegmentedControl, Text } from "@/shared/ui";
 
 export default function ExamplesPage() {
   const { data, error, refetch } = useExamples();
+  const navigate = useNavigationLock();
   const [exam, setExam] = useState<ExampleExam>("TYT");
   const questions = data?.questions.filter((q) => q.exam === exam) ?? [];
 
@@ -38,7 +41,7 @@ export default function ExamplesPage() {
         {error ? (
           <View className="items-center gap-4">
             <Text variant="body" className="text-center">
-              {error.message}
+              {friendlyError(error).message}
             </Text>
             <Button
               label="Tekrar dene"
@@ -59,10 +62,12 @@ export default function ExamplesPage() {
                 key={question.id}
                 question={question}
                 onPress={() =>
-                  router.push({
-                    pathname: "/example/[id]",
-                    params: { id: question.id },
-                  })
+                  navigate(() =>
+                    router.push({
+                      pathname: "/example/[id]",
+                      params: { id: question.id },
+                    }),
+                  )
                 }
               />
             ))}

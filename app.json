@@ -9,8 +9,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Solver needs camera access to scan your questions.",
-        "NSPhotoLibraryUsageDescription": "Solver needs photo library access so you can upload question images."
+        "NSCameraUsageDescription": "Sorunun fotoğrafını çekebilmen için Solver'ın kameraya erişmesi gerekiyor.",
+        "NSPhotoLibraryUsageDescription": "Galerinden soru fotoğrafı seçebilmen için Solver'ın fotoğraflarına erişmesi gerekiyor."
       }
     },
     "android": {
@@ -40,8 +40,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Solver needs photo library access so you can upload question images.",
-          "cameraPermission": "Solver needs camera access to scan your questions."
+          "photosPermission": "Galerinden soru fotoğrafı seçebilmen için Solver'ın fotoğraflarına erişmesi gerekiyor.",
+          "cameraPermission": "Sorunun fotoğrafını çekebilmen için Solver'ın kameraya erişmesi gerekiyor.",
+          "microphonePermission": false
         }
       ],
       "expo-status-bar",

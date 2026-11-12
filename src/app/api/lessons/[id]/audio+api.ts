@@ -11,7 +11,8 @@ export async function GET(request: Request, { id }: { id: string }) {
   const headers = {
     "content-type": "audio/wav",
     "accept-ranges": "bytes",
-    "cache-control": "max-age=31536000",
+    // A lesson's audio never changes: let the WebView keep it.
+    "cache-control": "public, max-age=31536000, immutable",
   };
 
   const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") ?? "");

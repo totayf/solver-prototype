@@ -1,32 +1,56 @@
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
+import { withImageErrors } from "./crop-image";
+import {
+  clampCropRect,
+  coversImage,
+  downscaleTarget,
+  type PixelRect,
+  type QuestionImage,
+} from "./crop-rect";
+
 /**
- * Bakes in the photo's rotation and shrinks it to a size that keeps text
- * sharp for OCR without uploading megabytes. Returns base64 JPEG.
+ * Cuts the question out of the working copy (crop snapped to whole pixels
+ * inside the image) and shrinks it to a size that keeps text sharp for OCR
+ * without uploading megabytes, in one decode and one encode. Returns base64
+ * JPEG; any failure is a friendly "Fotoğraf hazırlanamadı".
  */
-export async function prepareImage(uri: string): Promise<string> {
-  const original = await ImageManipulator.manipulate(uri).renderAsync();
-  const longEdge = Math.max(original.width, original.height);
-
-  const context = ImageManipulator.manipulate(uri);
-  if (longEdge > MAX_EDGE) {
-    context.resize(
-      original.width >= original.height
-        ? { width: MAX_EDGE }
-        : { height: MAX_EDGE },
-    );
-  }
-  const rendered = await context.renderAsync();
-  const saved = await rendered.saveAsync({
-    format: SaveFormat.JPEG,
-    compress: 0.85,
-    base64: true,
+export function prepareImage(
+  image: QuestionImage,
+  crop?: PixelRect,
+): Promise<string> {
+  return withImageErrors(async () => {
+    const rect = clampCropRect(crop, image);
+    const context = ImageManipulator.manipulate(image.uri);
+    try {
+      if (!coversImage(rect, image)) {
+        context.crop({
+          originX: rect.x,
+          originY: rect.y,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+      const target = downscaleTarget(rect, UPLOAD_MAX_EDGE);
+      if (target) context.resize(target);
+      const rendered = await context.renderAsync();
+      try {
+        const saved = await rendered.saveAsync({
+          format: SaveFormat.JPEG,
+          compress: 0.85,
+          base64: true,
+        });
+        if (!saved.base64) throw new Error("no base64 from the manipulator");
+        return saved.base64;
+      } finally {
+        rendered.release();
+      }
+    } finally {
+      context.release();
+    }
   });
-
-  if (!saved.base64) throw new Error("Fotoğraf hazırlanamadı.");
-  return saved.base64;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const MAX_EDGE = 1600;
+const UPLOAD_MAX_EDGE = 1600;

@@ -6,7 +6,7 @@ export async function GET(_request: Request, { id }: { id: string }) {
   return new Response(image.bytes, {
     headers: {
       "content-type": image.mediaType,
-      "cache-control": "max-age=31536000",
+      "cache-control": "public, max-age=31536000, immutable",
     },
   });
 }

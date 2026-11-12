@@ -15,6 +15,7 @@ export function Button({
   label,
   icon,
   variant = "primary",
+  size = "md",
   loading = false,
   disabled,
   className,
@@ -29,7 +30,8 @@ export function Button({
       accessibilityLabel={label}
       disabled={disabled || loading}
       className={cn(
-        "h-14 flex-row items-center justify-center gap-2.5 rounded-pill px-6",
+        "flex-row items-center justify-center gap-2.5 rounded-pill",
+        SIZES[size],
         VARIANTS[variant],
         className,
       )}
@@ -69,6 +71,12 @@ const VARIANTS = {
   secondary: "border border-border bg-background",
 } as const;
 
+const SIZES = {
+  md: "h-14 px-6",
+  /** Inline actions inside a card or row. */
+  sm: "h-10 px-4",
+} as const;
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ButtonProps
@@ -76,6 +84,7 @@ export interface ButtonProps
   label: string;
   icon?: IconSvgElement;
   variant?: keyof typeof VARIANTS;
+  size?: keyof typeof SIZES;
   loading?: boolean;
   className?: string;
 }

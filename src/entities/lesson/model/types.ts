@@ -16,6 +16,10 @@ export interface Lesson {
   /** Board figures in the order they first appear (sizes in board units). */
   figures: FigureLayout[];
   steps: LessonStep[];
+  /** One sentence on the trap students fall into here; shown on the end card. */
+  trap?: string;
+  /** Extra server data the player doesn't need (models, timings, …). */
+  meta?: Record<string, unknown>;
 }
 
 export interface LessonStep {
@@ -154,6 +158,33 @@ export type NoteSide =
   | "top-right"
   | "bottom-left"
   | "bottom-right";
+
+/** Where a lesson being generated is; the server reports it while the app waits. */
+export type GenerationStage = "reading" | "solving" | "writing" | "voicing";
+
+/** What the lesson endpoints answer (HTTP 202) while generation is still running. */
+export interface PendingLesson {
+  id: string;
+  status: "pending";
+  stage: GenerationStage;
+}
+
+/**
+ * A lesson as the app knows it while it may still be generated: the server's
+ * stage while it runs, the lesson once it's there, or why it isn't coming
+ * (a refusal such as "Bu soruda emin olamadım…", or `gone` for an unknown id).
+ * Media URLs inside a ready lesson may be short-lived: refetch, never persist.
+ */
+export type LessonState =
+  | { status: "pending"; id: string; stage: GenerationStage }
+  | { status: "ready"; lesson: Lesson }
+  | { status: "failed"; id: string; error: LessonFailure };
+
+/** Student-facing reason a lesson won't play (`gone`: the server has no such lesson). */
+export interface LessonFailure {
+  kind: "gone" | "failed" | "outdated" | "other";
+  message: string;
+}
 
 /** What a list row needs to show a lesson. */
 export interface LessonSummary {

@@ -38,18 +38,29 @@ export async function catalogForApp(): Promise<{
   };
 }
 
+/**
+ * A lesson's tool tags. Lessons never change once written, so each file is
+ * parsed once per process instead of on every catalog request (a lesson JSON
+ * with board figures runs to hundreds of KB).
+ */
 async function lessonTools(lessonId: string | undefined): Promise<string[]> {
   if (!lessonId) return [];
+  const known = toolsByLesson.get(lessonId);
+  if (known) return known;
   try {
     const file = await readFile(
       path.join(LESSONS_DIR, lessonId, "lesson.json"),
       "utf8",
     );
-    return (JSON.parse(file) as { tools?: string[] }).tools ?? [];
+    const tools = (JSON.parse(file) as { tools?: string[] }).tools ?? [];
+    toolsByLesson.set(lessonId, tools);
+    return tools;
   } catch {
     return [];
   }
 }
+
+const toolsByLesson = new Map<string, string[]>();
 
 export async function questionImage(
   id: string,

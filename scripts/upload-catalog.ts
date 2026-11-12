@@ -2,17 +2,29 @@
  * Uploads the local example catalog (.data/catalog) and every lesson it
  * references (.data/lessons) to Kovan's Dev Solver API.
  *
- *   SOLVER_KEY=… bun scripts/upload-catalog.ts https://kovanacademy.com
+ *   SOLVER_ADMIN_KEY=… bun scripts/upload-catalog.ts https://kovanacademy.com
+ *
+ * Catalog, import and image writes are admin writes: they send the admin key
+ * (`SOLVER_ADMIN_KEY`, header `x-solver-admin-key`). Until the server has
+ * moved them to that key, `SOLVER_KEY` (the app key, `x-solver-key`) is
+ * still sent, and used alone when no admin key is set.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const origin = process.argv[2]?.replace(/\/$/, "");
-const key = process.env.SOLVER_KEY;
-if (!origin || !key) {
-  console.error("Usage: SOLVER_KEY=… bun scripts/upload-catalog.ts <origin>");
+const appKey = process.env.SOLVER_KEY;
+const adminKey = process.env.SOLVER_ADMIN_KEY;
+if (!origin || !(adminKey || appKey)) {
+  console.error(
+    "Usage: SOLVER_ADMIN_KEY=… [SOLVER_KEY=…] bun scripts/upload-catalog.ts <origin>",
+  );
   process.exit(1);
 }
+const authHeaders: Record<string, string> = {
+  ...(appKey ? { "x-solver-key": appKey } : {}),
+  ...(adminKey ? { "x-solver-admin-key": adminKey } : {}),
+};
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const catalog = JSON.parse(
@@ -33,13 +45,20 @@ await mapLimit(lessonIds, 3, async (id) => {
     readFile(path.join(dir, "image")),
     readFile(path.join(dir, "image.json"), "utf8"),
   ]);
-  await send("POST", "/api/dev-solver/import", {
-    lesson: JSON.parse(lesson),
-    audio: audio.toString("base64"),
-    image: image.toString("base64"),
-    mediaType: (JSON.parse(meta) as { mediaType: string }).mediaType,
-  });
-  console.log(`lesson ${++done}/${lessonIds.length} ${id}`);
+  const status = await send(
+    "POST",
+    "/api/dev-solver/import",
+    {
+      lesson: JSON.parse(lesson),
+      audio: audio.toString("base64"),
+      image: image.toString("base64"),
+      mediaType: (JSON.parse(meta) as { mediaType: string }).mediaType,
+    },
+    // The server refuses to overwrite a lesson: one uploaded by an earlier run is kept.
+    [409],
+  );
+  const note = status === 409 ? " (already uploaded)" : "";
+  console.log(`lesson ${++done}/${lessonIds.length} ${id}${note}`);
 });
 
 const questions = [];
@@ -53,28 +72,40 @@ console.log(`catalog: ${questions.length} questions uploaded`);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-async function send(method: string, route: string, body: unknown) {
+/** Sends one admin write; returns the status, throwing unless it is 2xx or `allowed`. */
+async function send(
+  method: string,
+  route: string,
+  body: unknown,
+  allowed: number[] = [],
+): Promise<number> {
   const isBytes = body instanceof Uint8Array;
   const res = await fetch(origin + route, {
     method,
     headers: {
-      "x-solver-key": key as string,
+      ...authHeaders,
       "content-type": isBytes ? "application/octet-stream" : "application/json",
     },
-    body: isBytes ? body : JSON.stringify(body),
+    // A Buffer is a Uint8Array; copy it into a plain ArrayBuffer-backed view for fetch.
+    body: isBytes ? new Uint8Array(body) : JSON.stringify(body),
   });
-  if (!res.ok) {
+  if (!res.ok && !allowed.includes(res.status)) {
     throw new Error(`${method} ${route}: ${res.status} ${await res.text()}`);
   }
+  return res.status;
 }
 
 /** Tags come from the default (Argon) lesson, else any lesson. */
-async function defaultTools(question: CatalogQuestion): Promise<string[]> {
+async function defaultTools(
+  question: Pick<CatalogQuestion, "lessons">,
+): Promise<string[]> {
   const id = question.lessons.argon ?? Object.values(question.lessons)[0];
   if (!id) return [];
   const file = path.join(DATA_DIR, "lessons", id, "lesson.json");
-  return (JSON.parse(await readFile(file, "utf8")) as { tools?: string[] })
-    .tools ?? [];
+  const lesson = JSON.parse(await readFile(file, "utf8")) as {
+    tools?: string[];
+  };
+  return lesson.tools ?? [];
 }
 
 async function mapLimit<T>(
